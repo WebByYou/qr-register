@@ -26,13 +26,10 @@ const displayUrl = ref("");
 
 onMounted(() => {
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-    console.log("Initializing BroadcastChannel: lucky-draw-channel");
     broadcastChannel = new BroadcastChannel("lucky-draw-channel");
 
     broadcastChannel.onmessage = (event) => {
-      console.log("Control received message:", event.data);
       if (event.data.type === "display-ready") {
-        console.log("Display window is ready");
         const syncMessage = {
           type: "sync-state",
           winnersList: JSON.parse(JSON.stringify(winners.value)),
@@ -58,7 +55,6 @@ const openDisplayWindow = () => {
   displayWindow = window.open(displayUrl, "LuckyDrawDisplay", features);
 
   if (displayWindow) {
-    console.log("Display window opened successfully");
   } else {
     console.error("Failed to open display window. Check popup blocker.");
   }
@@ -181,25 +177,6 @@ const reset = () => {
         <p class="text-gray-600 mt-1">
           จัดการการสุ่มรางวัลและดูรายชื่อผู้โชคดี
         </p>
-      </div>
-      <div class="flex gap-3">
-        <button @click="openDisplayWindow" class="btn btn-outline gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-          เปิดหน้าจอแสดงผล
-        </button>
       </div>
     </div>
 

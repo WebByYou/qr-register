@@ -124,6 +124,24 @@ const prevPage = () => {
     page.value--;
   }
 };
+
+const { exportToExcel } = useExcel();
+
+const handleExport = () => {
+  if (registrations.value.length === 0) return;
+
+  const data = registrations.value.map((reg, index) => ({
+    ลำดับ: (page.value - 1) * limit.value + index + 1,
+    ชื่อ_นามสกุล: `${reg.firstName} ${reg.lastName}`,
+    รหัสพนักงาน: reg.employeeId,
+    วันที่ลงทะเบียน: new Date(reg.createdAt).toLocaleString("th-TH"),
+  }));
+
+  exportToExcel(
+    data,
+    `รายชื่อผู้ลงทะเบียน-${new Date().toISOString().split("T")[0]}`
+  );
+};
 </script>
 
 <template>
@@ -134,7 +152,10 @@ const prevPage = () => {
     >
       <h2 class="text-2xl font-bold">รายชื่อผู้ลงทะเบียน</h2>
       <div class="flex gap-2 w-full sm:w-auto">
-        <button class="btn btn-sm btn-success gap-2 flex-1 sm:flex-none">
+        <button
+          class="btn btn-sm btn-success gap-2 flex-1 sm:flex-none"
+          @click="handleExport"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-4 w-4"
