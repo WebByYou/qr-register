@@ -129,10 +129,12 @@ const prevPage = () => {
 <template>
   <div>
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
+    <div
+      class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6"
+    >
       <h2 class="text-2xl font-bold">รายชื่อผู้ลงทะเบียน</h2>
-      <div class="flex gap-2">
-        <button class="btn btn-sm btn-success gap-2">
+      <div class="flex gap-2 w-full sm:w-auto">
+        <button class="btn btn-sm btn-success gap-2 flex-1 sm:flex-none">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-4 w-4"
@@ -147,10 +149,11 @@ const prevPage = () => {
               d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          Export Excel
+          <span class="hidden sm:inline">Export Excel</span>
+          <span class="sm:hidden">Export</span>
         </button>
         <button
-          class="btn btn-sm btn-error gap-2"
+          class="btn btn-sm btn-error gap-2 flex-1 sm:flex-none"
           @click="clearAllRegistrations"
         >
           <svg
@@ -167,7 +170,8 @@ const prevPage = () => {
               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
             />
           </svg>
-          Clear All
+          <span class="hidden sm:inline">Clear All</span>
+          <span class="sm:hidden">Clear</span>
         </button>
       </div>
     </div>
@@ -178,8 +182,8 @@ const prevPage = () => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search"
-          class="input input-sm input-bordered w-64 pl-9"
+          placeholder="ค้นหา..."
+          class="input input-sm input-bordered w-full sm:w-64 pl-9"
         />
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -199,7 +203,7 @@ const prevPage = () => {
     </div>
 
     <!-- Table -->
-    <div class="bg-base-100 rounded-xl overflow-hidden border border-base-300">
+    <div class="bg-base-100 rounded-xl overflow-x-auto border border-base-300">
       <table class="table table-sm">
         <thead class="bg-base-200/50">
           <tr>
@@ -311,15 +315,15 @@ const prevPage = () => {
     <!-- Pagination -->
     <div
       v-if="pagination.totalPages > 1"
-      class="flex justify-between items-center mt-6"
+      class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6"
     >
-      <div class="text-sm text-base-content/60">
+      <div class="text-sm text-base-content/60 order-2 sm:order-1">
         แสดง {{ (page - 1) * limit + 1 }} -
         {{ Math.min(page * limit, pagination.total) }} จาก
         {{ pagination.total }}
       </div>
 
-      <div class="flex gap-1">
+      <div class="flex gap-1 order-1 sm:order-2">
         <button
           class="btn btn-sm btn-circle btn-ghost"
           :disabled="page === 1"
@@ -360,7 +364,7 @@ const prevPage = () => {
 
       <select
         v-model="limit"
-        class="select select-sm select-bordered rounded-full"
+        class="select select-sm select-bordered rounded-full order-3"
       >
         <option :value="10">10 / หน้า</option>
         <option :value="25">25 / หน้า</option>
