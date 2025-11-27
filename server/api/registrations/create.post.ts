@@ -3,7 +3,9 @@ import { z } from "zod";
 const registrationSchema = z.object({
   firstName: z.string().min(1, "กรุณากรอกชื่อ"),
   lastName: z.string().min(1, "กรุณากรอกนามสกุล"),
-  employeeId: z.string().length(6, "รหัสพนักงานต้องมี 6 หลัก"),
+  employeeId: z
+    .string()
+    .regex(/^(?:\d{5}|\d{7})$/, "รหัสพนักงานต้องมี 5 หรือ 7 หลัก"),
 });
 
 export default defineEventHandler(async (event) => {

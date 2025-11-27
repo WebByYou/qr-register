@@ -14,7 +14,7 @@ const schema = toTypedSchema(
     employeeId: z
       .string()
       .min(1, "กรุณากรอกรหัสพนักงาน")
-      .length(6, "รหัสพนักงานต้องมี 6 หลัก"),
+      .regex(/^(?:\d{5}|\d{7})$/, "รหัสพนักงานต้องมี 5 หรือ 7 หลัก"),
   })
 );
 
@@ -120,8 +120,8 @@ const onSubmit = handleSubmit(async (values) => {
               type="text"
               v-model="employeeId"
               v-bind="employeeIdProps"
-              placeholder="รหัส 6 หลัก"
-              maxlength="6"
+              placeholder="รหัส 5 หรือ 7 หลัก"
+              maxlength="7"
               class="input input-bordered w-full"
               :class="{ 'input-error': errors.employeeId }"
             />

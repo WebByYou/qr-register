@@ -385,7 +385,6 @@ onUnmounted(() => {
       <div
         v-if="winner && !isSpinning"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md"
-        @click="winner = null"
       >
         <!-- Background Effects -->
         <div class="absolute inset-0 overflow-hidden">
@@ -419,14 +418,8 @@ onUnmounted(() => {
               รหัส: {{ winner.employeeId }}
             </span>
             <span class="text-[#4A0404] tracking-wide">
-              {{ winner.department || "VIP" }}
+              {{ winner.department }}
             </span>
-          </div>
-
-          <div
-            class="mt-12 text-[#8B0000]/60 text-xl font-sarabun animate-pulse"
-          >
-            คลิกเพื่อปิดหน้าต่าง
           </div>
         </div>
       </div>

@@ -13,10 +13,16 @@ const allRegistrations = computed(() => registrations.value?.data || []);
 const isSpinning = ref(false);
 const winners = ref<any[]>([]);
 const spinDuration = 5000;
+const totalPrizes = ref(10);
+const isPrizeLimited = ref(false);
+const allowRepeatWinners = ref(false);
+
+const { showError } = useSwal();
 
 // BroadcastChannel for syncing
 let broadcastChannel: BroadcastChannel | null = null;
 let displayWindow: Window | null = null;
+const displayUrl = ref("");
 
 onMounted(() => {
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
@@ -38,6 +44,7 @@ onMounted(() => {
   } else {
     console.warn("BroadcastChannel not supported");
   }
+  displayUrl.value = window.location.origin + "/admin/lucky-draw/display";
 });
 
 onUnmounted(() => {
@@ -57,30 +64,47 @@ const openDisplayWindow = () => {
   }
 };
 
+// Computed property for available candidates
+const availableCandidates = computed(() => {
+  // 1. Filter by valid ID length (5 or 7 digits)
+  let candidates = allRegistrations.value.filter((reg) => {
+    const id = reg.employeeId?.toString().trim();
+    return id && (id.length === 5 || id.length === 7);
+  });
+
+  // 2. Filter out winners if repeats are not allowed
+  if (!allowRepeatWinners.value) {
+    candidates = candidates.filter(
+      (reg) => !winners.value.some((w) => w.id === reg.id)
+    );
+  }
+
+  return candidates;
+});
+
 const startDraw = () => {
-  if (allRegistrations.value.length === 0) {
-    alert("ไม่มีผู้ลงทะเบียนในระบบ");
+  if (isSpinning.value) return;
+
+  if (isPrizeLimited.value && winners.value.length >= totalPrizes.value) {
+    showError("ครบจำนวนรางวัลที่กำหนดแล้ว!", "แจ้งเตือน");
     return;
   }
 
-  // Filter out already selected winners to avoid duplicates
-  const availableCandidates = allRegistrations.value.filter(
-    (reg) => !winners.value.some((w) => w.id === reg.id)
-  );
-
-  if (availableCandidates.length === 0) {
-    alert("ผู้ลงทะเบียนทุกคนได้รับรางวัลไปหมดแล้ว!");
+  if (availableCandidates.value.length === 0) {
+    showError("ไม่พบผู้มีสิทธิ์ลุ้นรางวัล (หรือรางวัลหมดแล้ว)!", "แจ้งเตือน");
     return;
   }
 
   isSpinning.value = true;
 
-  const randomIndex = Math.floor(Math.random() * availableCandidates.length);
-  const selectedWinner = availableCandidates[randomIndex];
+  const randomIndex = Math.floor(
+    Math.random() * availableCandidates.value.length
+  );
+  const selectedWinner = availableCandidates.value[randomIndex];
 
   if (!selectedWinner) return;
 
-  let employeeId = selectedWinner.employeeId;
+  let employeeId = selectedWinner.employeeId.toString().trim();
   if (employeeId.length <= 5) {
     employeeId = employeeId.padStart(5, "0");
   } else {
@@ -147,7 +171,7 @@ const reset = () => {
 </script>
 
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <!-- Header Section -->
     <div
       class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
@@ -256,7 +280,9 @@ const reset = () => {
           <div>
             <p class="text-sm text-gray-500 font-medium">เหลือสิทธิ์ลุ้น</p>
             <h3 class="text-2xl font-bold text-gray-800">
-              {{ Math.max(0, allRegistrations.length - winners.length) }}
+              {{
+                isPrizeLimited ? Math.max(0, totalPrizes - winners.length) : "∞"
+              }}
             </h3>
           </div>
         </div>
@@ -264,75 +290,6 @@ const reset = () => {
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Control Panel -->
-      <div class="lg:col-span-1 space-y-6">
-        <div
-          class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
-        >
-          <div
-            class="p-6 bg-gradient-to-br from-purple-600 to-indigo-600 text-white text-center"
-          >
-            <h2 class="text-2xl font-bold mb-2">ควบคุมการสุ่ม</h2>
-            <p class="text-purple-100">
-              กดปุ่มเพื่อเริ่มสุ่มรางวัลบนหน้าจอแสดงผล
-            </p>
-          </div>
-          <div class="p-8 flex flex-col gap-4">
-            <button
-              @click="startDraw"
-              :disabled="isSpinning || allRegistrations.length === 0"
-              class="btn btn-lg w-full bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg
-                v-if="isSpinning"
-                class="animate-spin h-6 w-6 mr-2"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span v-if="isSpinning">กำลังสุ่ม...</span>
-              <span v-else>เริ่มสุ่มรางวัล 🎲</span>
-            </button>
-
-            <button
-              @click="reset"
-              :disabled="isSpinning"
-              class="btn btn-outline w-full hover:bg-gray-50"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 mr-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              รีเซ็ตหน้าจอแสดงผล
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Winners Table -->
       <div class="lg:col-span-2">
         <div
@@ -380,7 +337,7 @@ const reset = () => {
                       {{ winner.firstName }} {{ winner.lastName }}
                     </div>
                     <div class="text-xs text-gray-500">
-                      {{ winner.department || "-" }}
+                      {{ winner.department }}
                     </div>
                   </td>
                   <td>
@@ -394,6 +351,163 @@ const reset = () => {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Panel -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- Display Preview Card -->
+        <div
+          class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div
+            class="relative w-full aspect-video bg-gray-900 group cursor-pointer overflow-hidden"
+            @click="openDisplayWindow"
+          >
+            <iframe
+              v-if="displayUrl"
+              :src="displayUrl"
+              class="absolute inset-0 w-[400%] h-[400%] origin-top-left transform scale-[0.25] pointer-events-none select-none"
+              tabindex="-1"
+            ></iframe>
+
+            <!-- Hover Overlay -->
+            <div
+              class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm rounded-xl"
+            >
+              <span
+                class="text-white font-bold text-lg flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+                เปิดหน้าจอแสดงผล
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div
+            class="p-6 bg-gradient-to-br from-purple-600 to-indigo-600 text-white text-center"
+          >
+            <h2 class="text-2xl font-bold mb-2">ควบคุมการสุ่ม</h2>
+            <p class="text-purple-100">
+              กดปุ่มเพื่อเริ่มสุ่มรางวัลบนหน้าจอแสดงผล
+            </p>
+          </div>
+          <div class="p-8 flex flex-col gap-4">
+            <button
+              @click="startDraw"
+              :disabled="
+                isSpinning ||
+                availableCandidates.length === 0 ||
+                (isPrizeLimited && winners.length >= totalPrizes)
+              "
+              class="btn btn-lg w-full bg-gradient-to-r from-amber-500 to-orange-600 border-none text-white hover:from-amber-600 hover:to-orange-700 shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg
+                v-if="isSpinning"
+                class="animate-spin h-6 w-6 mr-2"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              <span v-if="isSpinning">กำลังสุ่ม...</span>
+              <span v-else>{{
+                winners.length > 0 ? "สุ่มอีกครั้ง 🎲" : "เริ่มสุ่มรางวัล 🎲"
+              }}</span>
+            </button>
+
+            <button
+              @click="reset"
+              :disabled="isSpinning"
+              class="btn btn-outline w-full hover:bg-gray-50"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              รีเซ็ตหน้าจอแสดงผล
+            </button>
+          </div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4">ตั้งค่าการสุ่ม</h3>
+          <div class="space-y-4">
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input
+                  v-model="isPrizeLimited"
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                />
+                <span class="label-text">จำกัดจำนวนรางวัล</span>
+              </label>
+            </div>
+
+            <div v-if="isPrizeLimited" class="form-control">
+              <label class="label">
+                <span class="label-text">จำนวนรางวัลทั้งหมด</span>
+              </label>
+              <input
+                v-model.number="totalPrizes"
+                type="number"
+                class="input input-bordered w-full"
+                min="1"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input
+                  v-model="allowRepeatWinners"
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                />
+                <span class="label-text">อนุญาตให้ได้รางวัลซ้ำ</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
