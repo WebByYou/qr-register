@@ -2,7 +2,16 @@
 const router = useRouter();
 const isDrawerOpen = ref(false);
 
-const handleLogout = () => {
+const { showConfirm } = useSwal();
+
+const handleLogout = async () => {
+  const confirmed = await showConfirm(
+    "คุณต้องการออกจากระบบหรือไม่?",
+    "ยืนยันการออกจากระบบ"
+  );
+
+  if (!confirmed) return;
+
   const isAuth = useCookie("isAuth");
   isAuth.value = null;
   router.push("/admin/login");
