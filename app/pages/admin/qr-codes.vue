@@ -98,7 +98,7 @@ const copyUrl = async () => {
         <div class="card-body items-center">
           <h3 class="card-title mb-4">QR Code Preview</h3>
 
-          <div class="bg-white p-6 rounded-xl shadow-lg">
+          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <img
               v-if="qrCodeDataUrl"
               :src="qrCodeDataUrl"
