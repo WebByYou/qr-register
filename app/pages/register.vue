@@ -31,6 +31,8 @@ const [firstName, firstNameProps] = defineField("firstName");
 const [lastName, lastNameProps] = defineField("lastName");
 const [employeeId, employeeIdProps] = defineField("employeeId");
 
+const { showSuccess, showError } = useSwal();
+
 const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true;
   submitError.value = "";
@@ -39,6 +41,7 @@ const onSubmit = handleSubmit(async (values) => {
       method: "POST",
       body: values,
     });
+    await showSuccess("ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว", "ลงทะเบียนสำเร็จ!");
     router.push("/success");
   } catch (error: any) {
     if (error.data?.statusMessage) {
@@ -46,10 +49,10 @@ const onSubmit = handleSubmit(async (values) => {
       if (message.includes("employeeId")) {
         setErrors({ employeeId: "รหัสพนักงานนี้ถูกลงทะเบียนแล้ว" });
       } else {
-        submitError.value = message;
+        showError(message, "เกิดข้อผิดพลาด");
       }
     } else {
-      submitError.value = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
+      showError("กรุณาลองใหม่อีกครั้ง", "เกิดข้อผิดพลาด");
     }
   } finally {
     isSubmitting.value = false;

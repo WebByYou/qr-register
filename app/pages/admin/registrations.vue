@@ -6,6 +6,8 @@ definePageMeta({
 const page = ref(1);
 const limit = ref(10);
 const searchQuery = ref("");
+const sortBy = ref("createdAt");
+const sortOrder = ref<"asc" | "desc">("desc");
 
 // Debounce search
 const debouncedSearch = ref("");
@@ -24,8 +26,10 @@ const { data: response, refresh } = await useFetch("/api/registrations", {
     page,
     limit,
     search: debouncedSearch,
+    sortBy,
+    sortOrder,
   },
-  watch: [page, limit, debouncedSearch],
+  watch: [page, limit, debouncedSearch, sortBy, sortOrder],
 });
 
 const registrations = computed(() => response.value?.data || []);
@@ -39,10 +43,24 @@ const pagination = computed(
     }
 );
 
-const deleteRegistration = async (id: number) => {
-  if (!confirm("คุณต้องการลบรายการนี้หรือไม่?")) {
-    return;
+const toggleSort = (field: string) => {
+  if (sortBy.value === field) {
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+  } else {
+    sortBy.value = field;
+    sortOrder.value = "asc";
   }
+};
+
+const { showConfirm, showError, showPasswordConfirm, showSuccess } = useSwal();
+
+const deleteRegistration = async (id: number) => {
+  const confirmed = await showConfirm(
+    "การลบนี้ไม่สามารถย้อนกลับได้",
+    "คุณต้องการลบรายการนี้หรือไม่?"
+  );
+
+  if (!confirmed) return;
 
   try {
     await $fetch(`/api/registrations/${id}`, {
@@ -50,7 +68,44 @@ const deleteRegistration = async (id: number) => {
     });
     await refresh();
   } catch (error) {
-    alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+    showError("กรุณาลองใหม่อีกครั้ง", "เกิดข้อผิดพลาดในการลบข้อมูล");
+  }
+};
+
+const clearAllRegistrations = async () => {
+  // Step 1: First confirmation
+  const firstConfirm = await showConfirm(
+    "การดำเนินการนี้จะลบข้อมูลการลงทะเบียนทั้งหมด และไม่สามารถกู้คืนได้",
+    "คุณแน่ใจหรือไม่?"
+  );
+
+  if (!firstConfirm) return;
+
+  // Step 2: Password confirmation
+  const password = await showPasswordConfirm(
+    "กรุณากรอกรหัสผ่าน Admin เพื่อยืนยันการลบข้อมูลทั้งหมด",
+    "ยืนยันด้วยรหัสผ่าน"
+  );
+
+  if (!password) return;
+
+  try {
+    const result = await $fetch("/api/registrations/clear", {
+      method: "POST",
+      body: { password },
+    });
+
+    await showSuccess(
+      `ลบข้อมูลทั้งหมด ${result.count} รายการเรียบร้อยแล้ว`,
+      "ลบข้อมูลสำเร็จ"
+    );
+    await refresh();
+  } catch (error: any) {
+    if (error.statusCode === 401) {
+      showError("กรุณาลองใหม่อีกครั้ง", "รหัสผ่านไม่ถูกต้อง");
+    } else {
+      showError("กรุณาลองใหม่อีกครั้ง", "เกิดข้อผิดพลาด");
+    }
   }
 };
 
@@ -76,8 +131,44 @@ const prevPage = () => {
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold">รายชื่อผู้ลงทะเบียน</h2>
-      <div class="badge badge-lg badge-ghost">
-        ทั้งหมด {{ pagination.total }} รายการ
+      <div class="flex gap-2">
+        <button class="btn btn-sm btn-success gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          Export Excel
+        </button>
+        <button
+          class="btn btn-sm btn-error gap-2"
+          @click="clearAllRegistrations"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          Clear All
+        </button>
       </div>
     </div>
 
@@ -112,9 +203,40 @@ const prevPage = () => {
       <table class="table table-sm">
         <thead class="bg-base-200/50">
           <tr>
-            <th class="font-semibold text-base-content/70">รหัสพนักงาน</th>
-            <th class="font-semibold text-base-content/70">ชื่อ-นามสกุล</th>
-            <th class="font-semibold text-base-content/70">วันที่ลงทะเบียน</th>
+            <th class="font-semibold text-base-content/70 w-16">#</th>
+            <th
+              class="font-semibold text-base-content/70 cursor-pointer hover:bg-base-300/50 select-none"
+              @click="toggleSort('employeeId')"
+            >
+              <div class="flex items-center gap-2">
+                รหัสพนักงาน
+                <span v-if="sortBy === 'employeeId'" class="text-xs">
+                  {{ sortOrder === "asc" ? "↑" : "↓" }}
+                </span>
+              </div>
+            </th>
+            <th
+              class="font-semibold text-base-content/70 cursor-pointer hover:bg-base-300/50 select-none"
+              @click="toggleSort('firstName')"
+            >
+              <div class="flex items-center gap-2">
+                ชื่อ-นามสกุล
+                <span v-if="sortBy === 'firstName'" class="text-xs">
+                  {{ sortOrder === "asc" ? "↑" : "↓" }}
+                </span>
+              </div>
+            </th>
+            <th
+              class="font-semibold text-base-content/70 cursor-pointer hover:bg-base-300/50 select-none"
+              @click="toggleSort('createdAt')"
+            >
+              <div class="flex items-center gap-2">
+                วันที่ลงทะเบียน
+                <span v-if="sortBy === 'createdAt'" class="text-xs">
+                  {{ sortOrder === "asc" ? "↑" : "↓" }}
+                </span>
+              </div>
+            </th>
             <th class="font-semibold text-base-content/70 text-right">
               จัดการ
             </th>
@@ -122,10 +244,13 @@ const prevPage = () => {
         </thead>
         <tbody>
           <tr
-            v-for="reg in registrations"
+            v-for="(reg, index) in registrations"
             :key="reg.id"
             class="hover:bg-base-200/30"
           >
+            <td class="text-base-content/60">
+              {{ (page - 1) * limit + index + 1 }}
+            </td>
             <td>
               <span class="font-mono font-medium text-primary">
                 {{ reg.employeeId }}
@@ -152,14 +277,28 @@ const prevPage = () => {
             <td class="text-right">
               <button
                 @click="deleteRegistration(reg.id)"
-                class="text-error hover:underline text-sm font-medium"
+                class="btn btn-ghost btn-sm text-error hover:bg-error/10"
+                title="ลบ"
               >
-                Delete
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
               </button>
             </td>
           </tr>
           <tr v-if="registrations.length === 0">
-            <td colspan="4" class="text-center py-12 text-base-content/40">
+            <td colspan="5" class="text-center py-12 text-base-content/40">
               {{
                 searchQuery ? "ไม่พบข้อมูลที่ค้นหา" : "ยังไม่มีรายการลงทะเบียน"
               }}
