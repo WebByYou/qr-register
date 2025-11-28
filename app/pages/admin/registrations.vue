@@ -127,20 +127,57 @@ const prevPage = () => {
 
 const { exportToExcel } = useExcel();
 
-const handleExport = () => {
-  if (registrations.value.length === 0) return;
+const handleExport = async () => {
+  try {
+    // Fetch all data for export
+    const response: any = await $fetch("/api/registrations", {
+      query: {
+        limit: pagination.value.total || 10000, // Fetch all records
+        sortBy: sortBy.value,
+        sortOrder: sortOrder.value,
+      },
+    });
 
-  const data = registrations.value.map((reg, index) => ({
-    ลำดับ: (page.value - 1) * limit.value + index + 1,
-    ชื่อ_นามสกุล: `${reg.firstName} ${reg.lastName}`,
-    รหัสพนักงาน: reg.employeeId,
-    วันที่ลงทะเบียน: new Date(reg.createdAt).toLocaleString("th-TH"),
-  }));
+    const allData = response.data || [];
 
-  exportToExcel(
-    data,
-    `รายชื่อผู้ลงทะเบียน-${new Date().toISOString().split("T")[0]}`
-  );
+    if (allData.length === 0) return;
+
+    const exportData = allData.map((reg: any, index: number) => {
+      // Calculate sequence number based on sort order
+      let sequenceNumber = index + 1;
+      if (sortBy.value === "createdAt" && sortOrder.value === "desc") {
+        sequenceNumber = pagination.value.total - index;
+      }
+
+      return {
+        ลำดับ: sequenceNumber,
+        ชื่อ_นามสกุล: `${reg.firstName} ${reg.lastName}`,
+        รหัสพนักงาน: reg.employeeId,
+        วันที่ลงทะเบียน: new Date(reg.createdAt).toLocaleString("th-TH"),
+      };
+    });
+
+    exportToExcel(
+      exportData,
+      `รายชื่อผู้ลงทะเบียนทั้งหมด-${new Date().toISOString().split("T")[0]}`
+    );
+  } catch (error) {
+    console.error("Error exporting data:", error);
+    showError("ไม่สามารถส่งออกข้อมูลได้", "เกิดข้อผิดพลาด");
+  }
+};
+
+const getSequenceNumber = (index: number) => {
+  const globalIndex = (page.value - 1) * limit.value + index;
+
+  // If sorting by creation time descending, reverse the numbering
+  // so the newest record shows the highest number (Total)
+  if (sortBy.value === "createdAt" && sortOrder.value === "desc") {
+    return pagination.value.total - globalIndex;
+  }
+
+  // Otherwise (ASC or other sorts), just show the row number
+  return globalIndex + 1;
 };
 </script>
 
@@ -150,7 +187,12 @@ const handleExport = () => {
     <div
       class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6"
     >
-      <h2 class="text-2xl font-bold">รายชื่อผู้ลงทะเบียน</h2>
+      <div class="flex items-center gap-3">
+        <h2 class="text-2xl font-bold">รายชื่อผู้ลงทะเบียน</h2>
+        <div class="badge badge-primary badge-lg font-mono">
+          {{ pagination.total }}
+        </div>
+      </div>
       <div class="flex gap-2 w-full sm:w-auto">
         <button
           class="btn btn-sm btn-success gap-2 flex-1 sm:flex-none"
@@ -274,7 +316,7 @@ const handleExport = () => {
             class="hover:bg-base-200/30"
           >
             <td class="text-base-content/60">
-              {{ (page - 1) * limit + index + 1 }}
+              {{ getSequenceNumber(index) }}
             </td>
             <td>
               <span class="font-mono font-medium text-primary">
