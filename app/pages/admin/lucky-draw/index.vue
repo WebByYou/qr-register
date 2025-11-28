@@ -17,7 +17,7 @@ const totalPrizes = ref(10);
 const isPrizeLimited = ref(false);
 const allowRepeatWinners = ref(false);
 
-const { showError } = useSwal();
+const { showError, showConfirm, showSuccess } = useSwal();
 
 // BroadcastChannel for syncing
 let broadcastChannel: BroadcastChannel | null = null;
@@ -81,9 +81,7 @@ const isSavingPrize = ref(false);
 
 const startEditPrize = (winner: any) => {
   editingWinnerId.value = winner.id;
-  tempPrizeValue.value =
-    winner.prize ||
-    `รางวัลที่ ${winners.value.length - winners.value.indexOf(winner)}`;
+  tempPrizeValue.value = winner.prize || "";
 };
 
 const cancelEditPrize = () => {
@@ -113,6 +111,30 @@ const savePrize = async (winner: any) => {
     showError("บันทึกรางวัลไม่สำเร็จ", "ข้อผิดพลาด");
   } finally {
     isSavingPrize.value = false;
+  }
+};
+
+const clearHistory = async () => {
+  const confirmed = await showConfirm(
+    "คุณแน่ใจหรือไม่ที่จะล้างประวัติผู้โชคดีทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้",
+    "ยืนยันการล้างประวัติ?",
+    {
+      confirmButtonText: "ใช่, ล้างประวัติ",
+      confirmButtonColor: "#d33",
+    }
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await $fetch("/api/lucky-draw/history", {
+      method: "DELETE",
+    });
+    winners.value = [];
+    showSuccess("ล้างประวัติเรียบร้อยแล้ว", "สำเร็จ!");
+  } catch (error) {
+    console.error("Error clearing history:", error);
+    showError("ล้างประวัติไม่สำเร็จ", "เกิดข้อผิดพลาด");
   }
 };
 
@@ -431,7 +453,7 @@ const reset = () => {
             <h2 class="text-xl font-bold text-gray-800">รายชื่อผู้โชคดี</h2>
             <button
               v-if="winners.length > 0"
-              @click="winners = []"
+              @click="clearHistory"
               class="text-sm text-red-500 hover:text-red-700 font-medium"
             >
               ล้างประวัติ
@@ -557,9 +579,7 @@ const reset = () => {
                         v-else
                         class="flex justify-between items-center group"
                       >
-                        <span>{{
-                          winner.prize || `รางวัลที่ ${winners.length - index}`
-                        }}</span>
+                        <span>{{ winner.prize || "-" }}</span>
                         <button
                           @click="startEditPrize(winner)"
                           class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity"

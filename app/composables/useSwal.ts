@@ -23,16 +23,22 @@ export const useSwal = () => {
 
   const showConfirm = async (
     message: string,
-    title: string = "คุณแน่ใจหรือไม่?"
+    title: string = "คุณแน่ใจหรือไม่?",
+    options: {
+      confirmButtonText?: string;
+      confirmButtonColor?: string;
+      cancelButtonText?: string;
+      icon?: "warning" | "error" | "success" | "info" | "question";
+    } = {}
   ) => {
     const result = await Swal.fire({
-      icon: "warning",
+      icon: options.icon || "warning",
       title,
       text: message,
       showCancelButton: true,
-      confirmButtonText: "ยืนยัน",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#3b82f6",
+      confirmButtonText: options.confirmButtonText || "ยืนยัน",
+      cancelButtonText: options.cancelButtonText || "ยกเลิก",
+      confirmButtonColor: options.confirmButtonColor || "#3b82f6",
       cancelButtonColor: "#6b7280",
       reverseButtons: true,
     });
