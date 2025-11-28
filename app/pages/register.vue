@@ -14,7 +14,8 @@ const schema = toTypedSchema(
     employeeId: z
       .string()
       .min(1, "กรุณากรอกรหัสพนักงาน")
-      .regex(/^(?:\d{5}|\d{7})$/, "รหัสพนักงานต้องมี 5 หรือ 7 หลัก"),
+      .max(7, "รหัสพนักงานต้องไม่เกิน 7 หลัก")
+      .regex(/^\d+$/, "รหัสพนักงานต้องเป็นตัวเลขเท่านั้น"),
   })
 );
 
@@ -37,12 +38,12 @@ const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true;
   submitError.value = "";
   try {
-    await $fetch("/api/registrations/create", {
+    const response: any = await $fetch("/api/registrations/create", {
       method: "POST",
       body: values,
     });
-    await showSuccess("ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว", "ลงทะเบียนสำเร็จ!");
-    router.push("/success");
+    // await showSuccess("ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว", "ลงทะเบียนสำเร็จ!");
+    router.push(`/success?id=${response.id}`);
   } catch (error: any) {
     if (error.data?.statusMessage) {
       const message = error.data.statusMessage;
@@ -61,7 +62,9 @@ const onSubmit = handleSubmit(async (values) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-base-200 flex items-center justify-center p-4">
+  <div
+    class="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center p-4"
+  >
     <div class="card w-full max-w-md bg-base-100 shadow-xl">
       <div class="card-body">
         <h2
@@ -120,7 +123,7 @@ const onSubmit = handleSubmit(async (values) => {
               type="text"
               v-model="employeeId"
               v-bind="employeeIdProps"
-              placeholder="รหัส 5 หรือ 7 หลัก"
+              placeholder="รหัสพนักงาน"
               maxlength="7"
               class="input input-bordered w-full"
               :class="{ 'input-error': errors.employeeId }"

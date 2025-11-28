@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import QRCode from "qrcode";
+import { useDebounceFn } from "@vueuse/core";
 
 definePageMeta({
   layout: "admin",
@@ -9,14 +10,56 @@ const registrationUrl = ref("");
 const qrSize = ref(300);
 const qrColor = ref("#000000");
 const qrBgColor = ref("#ffffff");
+const showOnDisplay = ref(false);
 const qrCodeDataUrl = ref("");
+const isLoading = ref(true);
+const isSaving = ref(false);
+
+const { showSuccess, showError } = useSwal();
 
 // Get full registration URL
-onMounted(() => {
+onMounted(async () => {
   const baseUrl = window.location.origin;
   registrationUrl.value = `${baseUrl}/register`;
+  await loadSettings();
   generateQRCode();
 });
+
+const loadSettings = async () => {
+  try {
+    const response: any = await $fetch("/api/qr-code/settings");
+    if (response?.success && response?.data) {
+      qrSize.value = response.data.size || 300;
+      qrColor.value = response.data.color || "#000000";
+      qrBgColor.value = response.data.bgColor || "#ffffff";
+      showOnDisplay.value = response.data.showOnDisplay || false;
+    }
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const saveSettings = useDebounceFn(async () => {
+  isSaving.value = true;
+  try {
+    await $fetch("/api/qr-code/settings", {
+      method: "POST",
+      body: {
+        size: qrSize.value,
+        color: qrColor.value,
+        bgColor: qrBgColor.value,
+        showOnDisplay: showOnDisplay.value,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving settings:", error);
+    showError("บันทึกการตั้งค่าไม่สำเร็จ", "ข้อผิดพลาด");
+  } finally {
+    isSaving.value = false;
+  }
+}, 1000);
 
 // Generate QR Code locally
 const generateQRCode = async () => {
@@ -37,9 +80,10 @@ const generateQRCode = async () => {
   }
 };
 
-// Watch for changes and regenerate
-watch([qrSize, qrColor, qrBgColor], () => {
+// Watch for changes and regenerate/save
+watch([qrSize, qrColor, qrBgColor, showOnDisplay], () => {
   generateQRCode();
+  saveSettings();
 });
 
 const downloadQR = () => {
@@ -56,7 +100,7 @@ const printQR = () => {
   const doc = printWindow.document;
   doc.open();
   doc.write("<!DOCTYPE html>");
-  doc.write("<html><head><title>Print QR Code<" + "/title>");
+  doc.write("<html><head><title>Print QR Code</title>");
   doc.write("<style>");
   doc.write(
     'body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: "Kanit", sans-serif; }'
@@ -64,19 +108,17 @@ const printQR = () => {
   doc.write("img { max-width: 100%; height: auto; }");
   doc.write(".info { text-align: center; margin-top: 20px; }");
   doc.write("@media print { body { padding: 20px; } }");
-  doc.write("<" + "/style><" + "/head><body>");
+  doc.write("</style></head><body>");
   doc.write('<img src="' + qrCodeDataUrl.value + '" alt="QR Code" />');
-  doc.write('<div class="info"><h2>สแกน QR Code เพื่อลงทะเบียน<' + "/h2>");
-  doc.write("<p>" + registrationUrl.value + "<" + "/p><" + "/div>");
-  doc.write("<" + "/body><" + "/html>");
+  doc.write('<div class="info"><h2>สแกน QR Code เพื่อลงทะเบียน</h2>');
+  doc.write("<p>" + registrationUrl.value + "</p></div>");
+  doc.write("</body></html>");
   doc.close();
 
   setTimeout(() => {
     printWindow.print();
   }, 500);
 };
-
-const { showSuccess } = useSwal();
 
 const copyUrl = async () => {
   try {
@@ -90,20 +132,33 @@ const copyUrl = async () => {
 
 <template>
   <div>
-    <h2 class="text-2xl font-bold mb-6">จัดการ QR Code</h2>
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold">จัดการ QR Code</h2>
+      <div
+        v-if="isSaving"
+        class="text-sm text-gray-500 flex items-center gap-2"
+      >
+        <span class="loading loading-spinner loading-xs"></span>
+        กำลังบันทึก...
+      </div>
+    </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- QR Code Preview -->
       <div class="card bg-base-100 border border-base-300">
         <div class="card-body items-center">
-          <h3 class="card-title mb-4">QR Code Preview</h3>
+          <h3 class="card-title mb-4">ตัวอย่าง QR Code</h3>
 
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div class="bg-white rounded-xl shadow-lg overflow-hidden p-4">
+            <div
+              v-if="isLoading"
+              class="w-64 h-64 bg-gray-200 animate-pulse rounded-lg"
+            ></div>
             <img
-              v-if="qrCodeDataUrl"
+              v-else-if="qrCodeDataUrl"
               :src="qrCodeDataUrl"
               alt="QR Code"
-              class="w-full h-auto"
+              class="w-full h-auto max-w-[300px]"
             />
           </div>
 
@@ -175,6 +230,25 @@ const copyUrl = async () => {
         <div class="card-body">
           <h3 class="card-title mb-4">ตั้งค่า QR Code</h3>
 
+          <!-- Show on Display Page -->
+          <div class="form-control">
+            <label class="label cursor-pointer">
+              <span class="label-text font-semibold"
+                >แสดงบนหน้าจอสุ่มรางวัล</span
+              >
+              <input
+                v-model="showOnDisplay"
+                type="checkbox"
+                class="toggle toggle-primary"
+              />
+            </label>
+            <div class="text-xs text-base-content/60 px-1">
+              เมื่อเปิดใช้งาน QR Code จะแสดงที่มุมขวาล่างของหน้าจอสุ่มรางวัล
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
           <!-- Size -->
           <div class="form-control">
             <label class="label">
@@ -236,7 +310,7 @@ const copyUrl = async () => {
           </div>
 
           <!-- Presets -->
-          <div class="divider">Presets</div>
+          <div class="divider">รูปแบบสำเร็จรูป</div>
           <div class="grid grid-cols-2 gap-2">
             <button
               class="btn btn-sm btn-outline"

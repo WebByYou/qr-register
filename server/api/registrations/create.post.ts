@@ -5,7 +5,8 @@ const registrationSchema = z.object({
   lastName: z.string().min(1, "กรุณากรอกนามสกุล"),
   employeeId: z
     .string()
-    .regex(/^(?:\d{5}|\d{7})$/, "รหัสพนักงานต้องมี 5 หรือ 7 หลัก"),
+    .max(7, "รหัสพนักงานต้องไม่เกิน 7 หลัก")
+    .regex(/^\d+$/, "รหัสพนักงานต้องเป็นตัวเลขเท่านั้น"),
 });
 
 export default defineEventHandler(async (event) => {
