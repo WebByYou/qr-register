@@ -7,6 +7,9 @@ const settings = ref({
   titlePosition: { x: 960, y: 540 },
   subtitlePosition: { x: 960, y: 600 },
   countPosition: { x: 960, y: 660 },
+  titleStyle: { color: "#ffffff", size: 3.1, locked: false },
+  subtitleStyle: { color: "#ffffff", size: 1.5, locked: false },
+  countStyle: { color: "#ffffff", size: 1.25, locked: false },
   qrSize: 300,
   title: "Lucky Draw",
   subtitle: "ลุ้นรับรางวัลใหญ่",
@@ -35,6 +38,17 @@ onMounted(async () => {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        // Ensure locked property exists
+        if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
+          data.titleStyle.locked = false;
+        if (
+          data.subtitleStyle &&
+          typeof data.subtitleStyle.locked === "undefined"
+        )
+          data.subtitleStyle.locked = false;
+        if (data.countStyle && typeof data.countStyle.locked === "undefined")
+          data.countStyle.locked = false;
+
         if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
           settings.value = data;
         }
@@ -97,12 +111,15 @@ const startDrag = (e: MouseEvent, type: string) => {
     startLeft = settings.value.qrPosition.x;
     startTop = settings.value.qrPosition.y;
   } else if (type === "title") {
+    if (settings.value.titleStyle.locked) return;
     startLeft = settings.value.titlePosition.x;
     startTop = settings.value.titlePosition.y;
   } else if (type === "subtitle") {
+    if (settings.value.subtitleStyle.locked) return;
     startLeft = settings.value.subtitlePosition.x;
     startTop = settings.value.subtitlePosition.y;
   } else if (type === "count") {
+    if (settings.value.countStyle.locked) return;
     startLeft = settings.value.countPosition.x;
     startTop = settings.value.countPosition.y;
   }
@@ -225,8 +242,20 @@ const loadSettings = async () => {
       // Vue's diffing should handle it.
 
       // Check if we need to update to avoid replacing if identical (optional optimization, but replacing is fine)
-      if (JSON.stringify(settings.value) !== JSON.stringify(response.data)) {
-        settings.value = response.data;
+      const data = response.data;
+      // Ensure locked property exists
+      if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
+        data.titleStyle.locked = false;
+      if (
+        data.subtitleStyle &&
+        typeof data.subtitleStyle.locked === "undefined"
+      )
+        data.subtitleStyle.locked = false;
+      if (data.countStyle && typeof data.countStyle.locked === "undefined")
+        data.countStyle.locked = false;
+
+      if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
+        settings.value = data;
       }
     }
   } catch (error) {
@@ -326,15 +355,18 @@ onMounted(() => {
         <!-- Content Container (Title/Subtitle/WaitText) -->
         <!-- Title -->
         <div
-          class="absolute transition-all duration-75 ease-out text-white font-bold text-[3.1cqw] drop-shadow-lg whitespace-nowrap"
+          class="absolute transition-all duration-75 ease-out font-bold drop-shadow-lg whitespace-nowrap select-none"
           :class="{
-            'cursor-move hover:ring-2 ring-blue-500 rounded': isPreview,
+            'cursor-move hover:ring-2 ring-blue-500 rounded':
+              isPreview && !settings.titleStyle.locked,
           }"
           :style="{
             left: `${(settings.titlePosition.x / 1920) * 100}%`,
             top: `${(settings.titlePosition.y / 1080) * 100}%`,
             transform: 'translate(-50%, -50%)',
             zIndex: isDragging === 'title' ? 50 : 20,
+            color: settings.titleStyle.color,
+            fontSize: `${settings.titleStyle.size}cqw`,
           }"
           @mousedown="(e) => startDrag(e, 'title')"
         >
@@ -343,15 +375,18 @@ onMounted(() => {
 
         <!-- Subtitle -->
         <div
-          class="absolute transition-all duration-75 ease-out text-white opacity-90 text-[1.5cqw] drop-shadow-md whitespace-nowrap"
+          class="absolute transition-all duration-75 ease-out opacity-90 drop-shadow-md whitespace-nowrap select-none"
           :class="{
-            'cursor-move hover:ring-2 ring-blue-500 rounded': isPreview,
+            'cursor-move hover:ring-2 ring-blue-500 rounded':
+              isPreview && !settings.subtitleStyle.locked,
           }"
           :style="{
             left: `${(settings.subtitlePosition.x / 1920) * 100}%`,
             top: `${(settings.subtitlePosition.y / 1080) * 100}%`,
             transform: 'translate(-50%, -50%)',
             zIndex: isDragging === 'subtitle' ? 50 : 20,
+            color: settings.subtitleStyle.color,
+            fontSize: `${settings.subtitleStyle.size}cqw`,
           }"
           @mousedown="(e) => startDrag(e, 'subtitle')"
         >
@@ -371,20 +406,23 @@ onMounted(() => {
 
         <div
           v-if="settings.showCount"
-          class="absolute transition-all duration-75 ease-out text-white font-light tracking-wider text-[1.25cqw] whitespace-nowrap"
+          class="absolute transition-all duration-75 ease-out font-light tracking-wider whitespace-nowrap select-none"
           :class="{
-            'cursor-move hover:ring-2 ring-blue-500 rounded': isPreview,
+            'cursor-move hover:ring-2 ring-blue-500 rounded':
+              isPreview && !settings.countStyle.locked,
           }"
           :style="{
             left: `${(settings.countPosition.x / 1920) * 100}%`,
             top: `${(settings.countPosition.y / 1080) * 100}%`,
             transform: 'translate(-50%, -50%)',
             zIndex: isDragging === 'count' ? 50 : 30,
+            color: settings.countStyle.color,
+            fontSize: `${settings.countStyle.size}cqw`,
           }"
           @mousedown="(e) => startDrag(e, 'count')"
         >
           ลงทะเบียนแล้ว
-          <span class="font-bold text-[1.5cqw]">{{ registrationCount }}</span>
+          <span class="font-bold">{{ registrationCount }}</span>
           คน
         </div>
 

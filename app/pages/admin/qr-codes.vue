@@ -24,6 +24,9 @@ const displaySettings = ref({
   titlePosition: { x: 960, y: 540 },
   subtitlePosition: { x: 960, y: 600 },
   countPosition: { x: 960, y: 660 },
+  titleStyle: { color: "#ffffff", size: 3.1, locked: false },
+  subtitleStyle: { color: "#ffffff", size: 1.5, locked: false },
+  countStyle: { color: "#ffffff", size: 1.25, locked: false },
   qrSize: 300,
   title: "",
   subtitle: "",
@@ -54,16 +57,22 @@ const loadSettings = async () => {
     }
 
     if (displayRes?.success && displayRes?.data) {
-      displaySettings.value.backgroundImage =
-        displayRes.data.backgroundImage || "";
-      if (displayRes.data.qrPosition) {
-        displaySettings.value.qrPosition = displayRes.data.qrPosition;
-      }
-      displaySettings.value.qrSize = displayRes.data.qrSize || 300;
-      displaySettings.value.title = displayRes.data.title || "Lucky Draw";
-      displaySettings.value.subtitle =
-        displayRes.data.subtitle || "ลุ้นรับรางวัลใหญ่";
-      displaySettings.value.showCount = displayRes.data.showCount || false;
+      const data = displayRes.data;
+      // Ensure locked property exists
+      if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
+        data.titleStyle.locked = false;
+      if (
+        data.subtitleStyle &&
+        typeof data.subtitleStyle.locked === "undefined"
+      )
+        data.subtitleStyle.locked = false;
+      if (data.countStyle && typeof data.countStyle.locked === "undefined")
+        data.countStyle.locked = false;
+
+      displaySettings.value = {
+        ...displaySettings.value,
+        ...data,
+      };
     }
   } catch (error) {
     console.error("Error loading settings:", error);
@@ -161,6 +170,8 @@ const handleIframeMessage = (event: MessageEvent) => {
     displaySettings.value.titlePosition = event.data.position;
   } else if (event.data.type === "UPDATE_SUBTITLE_POSITION") {
     displaySettings.value.subtitlePosition = event.data.position;
+  } else if (event.data.type === "UPDATE_COUNT_POSITION") {
+    displaySettings.value.countPosition = event.data.position;
   }
 };
 
@@ -202,6 +213,9 @@ const saveDisplaySettings = async () => {
         titlePosition: displaySettings.value.titlePosition,
         subtitlePosition: displaySettings.value.subtitlePosition,
         countPosition: displaySettings.value.countPosition,
+        titleStyle: displaySettings.value.titleStyle,
+        subtitleStyle: displaySettings.value.subtitleStyle,
+        countStyle: displaySettings.value.countStyle,
         qrSize: displaySettings.value.qrSize,
         title: displaySettings.value.title,
         subtitle: displaySettings.value.subtitle,
@@ -494,9 +508,21 @@ const copyUrl = async () => {
       <div class="card-body">
         <h3 class="card-title mb-4">จัดการหน้าจอแสดงผล (QR Display)</h3>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <!-- Visual Editor (Iframe) -->
+          <div
+            class="border rounded-xl overflow-hidden relative w-full aspect-video bg-gray-100 lg:col-span-3"
+          >
+            <iframe
+              ref="previewIframe"
+              src="/qr-display?preview=true"
+              class="w-full h-full border-0"
+              title="QR Display Preview"
+            ></iframe>
+          </div>
+
           <!-- Settings Form -->
-          <div>
+          <div class="lg:col-span-1">
             <div class="form-control">
               <label class="label">
                 <span class="label-text font-semibold"
@@ -514,48 +540,6 @@ const copyUrl = async () => {
               </div>
             </div>
 
-            <div class="form-control mt-4">
-              <label class="label cursor-pointer justify-start gap-4">
-                <span class="label-text font-semibold"
-                  >แสดงจำนวนผู้ลงทะเบียน</span
-                >
-                <input
-                  v-model="displaySettings.showCount"
-                  type="checkbox"
-                  class="toggle toggle-primary"
-                />
-              </label>
-              <div class="text-xs text-base-content/60 mt-1">
-                หากเปิดใช้งาน จะแสดงจำนวนผู้ลงทะเบียนทั้งหมดแทนข้อความรอ
-              </div>
-            </div>
-
-            <div class="form-control mt-4">
-              <label class="label">
-                <span class="label-text font-semibold">หัวข้อ (Title)</span>
-              </label>
-              <input
-                v-model="displaySettings.title"
-                type="text"
-                class="input input-bordered w-full"
-                placeholder="Lucky Draw"
-              />
-            </div>
-
-            <div class="form-control mt-4">
-              <label class="label">
-                <span class="label-text font-semibold"
-                  >คำบรรยาย (Subtitle)</span
-                >
-              </label>
-              <input
-                v-model="displaySettings.subtitle"
-                type="text"
-                class="input input-bordered w-full"
-                placeholder="ลุ้นรับรางวัลใหญ่"
-              />
-            </div>
-
             <div class="form-control mt-4 w-full">
               <label class="label cursor-pointer pb-2">
                 <span class="label-text font-semibold">ขนาด QR Code</span>
@@ -566,8 +550,269 @@ const copyUrl = async () => {
                 min="100"
                 max="1000"
                 step="10"
-                class="range range-primary w-full"
+                class="range range-xs range-primary w-full"
               />
+            </div>
+
+            <!-- Title Group -->
+            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+              <div class="form-control">
+                <div class="label pt-0 pb-1 justify-between">
+                  <span class="label-text font-bold text-lg"
+                    >หัวข้อ (Title)</span
+                  >
+                  <button
+                    class="btn btn-ghost btn-xs"
+                    @click="
+                      displaySettings.titleStyle.locked =
+                        !displaySettings.titleStyle.locked
+                    "
+                  >
+                    <svg
+                      v-if="displaySettings.titleStyle.locked"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5 text-error"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5 text-success"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <input
+                  v-model="displaySettings.title"
+                  type="text"
+                  class="input input-bordered w-full mb-3"
+                  placeholder="Lucky Draw"
+                  :disabled="displaySettings.titleStyle.locked"
+                />
+
+                <div class="flex gap-4 items-start">
+                  <div class="flex-1">
+                    <label class="label pt-0 pb-2 justify-start">
+                      <span class="label-text text-sm font-medium">ขนาด</span>
+                    </label>
+                    <input
+                      v-model.number="displaySettings.titleStyle.size"
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="0.1"
+                      class="range range-xs range-primary w-full"
+                      :disabled="displaySettings.titleStyle.locked"
+                    />
+                  </div>
+                  <div class="flex-none flex flex-col items-center">
+                    <label class="label pt-0 pb-2">
+                      <span class="label-text text-sm font-medium">สี</span>
+                    </label>
+                    <input
+                      v-model="displaySettings.titleStyle.color"
+                      type="color"
+                      class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
+                      :disabled="displaySettings.titleStyle.locked"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtitle Group -->
+            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+              <div class="form-control">
+                <div class="label pt-0 pb-1 justify-between">
+                  <span class="label-text font-bold text-lg"
+                    >คำบรรยาย (Subtitle)</span
+                  >
+                  <button
+                    class="btn btn-ghost btn-xs"
+                    @click="
+                      displaySettings.subtitleStyle.locked =
+                        !displaySettings.subtitleStyle.locked
+                    "
+                  >
+                    <svg
+                      v-if="displaySettings.subtitleStyle.locked"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5 text-error"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5 text-success"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <input
+                  v-model="displaySettings.subtitle"
+                  type="text"
+                  class="input input-bordered w-full mb-3"
+                  placeholder="ลุ้นรับรางวัลใหญ่"
+                  :disabled="displaySettings.subtitleStyle.locked"
+                />
+
+                <div class="flex gap-4 items-start">
+                  <div class="flex-1">
+                    <label class="label pt-0 pb-2 justify-start">
+                      <span class="label-text text-sm font-medium">ขนาด</span>
+                    </label>
+                    <input
+                      v-model.number="displaySettings.subtitleStyle.size"
+                      type="range"
+                      min="0.5"
+                      max="5"
+                      step="0.1"
+                      class="range range-xs range-primary w-full"
+                      :disabled="displaySettings.subtitleStyle.locked"
+                    />
+                  </div>
+                  <div class="flex-none flex flex-col items-center">
+                    <label class="label pt-0 pb-2">
+                      <span class="label-text text-sm font-medium">สี</span>
+                    </label>
+                    <input
+                      v-model="displaySettings.subtitleStyle.color"
+                      type="color"
+                      class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
+                      :disabled="displaySettings.subtitleStyle.locked"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Count Group -->
+            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+              <div class="form-control">
+                <div class="label cursor-pointer justify-between pt-0 pb-2">
+                  <span class="label-text font-bold text-lg"
+                    >ตัวนับ (Count)</span
+                  >
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="btn btn-ghost btn-xs"
+                      @click="
+                        displaySettings.countStyle.locked =
+                          !displaySettings.countStyle.locked
+                      "
+                    >
+                      <svg
+                        v-if="displaySettings.countStyle.locked"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-error"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-success"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                    <input
+                      v-model="displaySettings.showCount"
+                      type="checkbox"
+                      class="toggle toggle-primary"
+                      :disabled="displaySettings.countStyle.locked"
+                    />
+                  </div>
+                </div>
+                <div class="text-xs text-base-content/60 mb-3">
+                  แสดงจำนวนผู้ลงทะเบียน
+                </div>
+
+                <div
+                  v-if="displaySettings.showCount"
+                  class="pt-2 border-t mt-2"
+                >
+                  <div class="flex gap-4 items-start">
+                    <div class="flex-1">
+                      <label class="label pt-0 pb-2 justify-start">
+                        <span class="label-text text-sm font-medium">ขนาด</span>
+                      </label>
+                      <input
+                        v-model.number="displaySettings.countStyle.size"
+                        type="range"
+                        min="0.5"
+                        max="5"
+                        step="0.1"
+                        class="range range-xs range-primary w-full"
+                        :disabled="displaySettings.countStyle.locked"
+                      />
+                    </div>
+                    <div class="flex-none flex flex-col items-center">
+                      <label class="label pt-0 pb-2">
+                        <span class="label-text text-sm font-medium">สี</span>
+                      </label>
+                      <input
+                        v-model="displaySettings.countStyle.color"
+                        type="color"
+                        class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
+                        :disabled="displaySettings.countStyle.locked"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="mt-6">
@@ -583,18 +828,6 @@ const copyUrl = async () => {
                 บันทึกการตั้งค่าหน้าจอ
               </button>
             </div>
-          </div>
-
-          <!-- Visual Editor (Iframe) -->
-          <div
-            class="border rounded-xl overflow-hidden relative w-full aspect-video bg-gray-100"
-          >
-            <iframe
-              ref="previewIframe"
-              src="/qr-display?preview=true"
-              class="w-full h-full border-0"
-              title="QR Display Preview"
-            ></iframe>
           </div>
         </div>
       </div>

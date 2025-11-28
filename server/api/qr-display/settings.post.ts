@@ -26,6 +26,24 @@ export default defineEventHandler(async (event) => {
         key: "countPosition",
         value: JSON.stringify(body.countPosition || { x: 960, y: 660 }),
       },
+      {
+        key: "titleStyle",
+        value: JSON.stringify(
+          body.titleStyle || { color: "#ffffff", size: 3.1 }
+        ),
+      },
+      {
+        key: "subtitleStyle",
+        value: JSON.stringify(
+          body.subtitleStyle || { color: "#ffffff", size: 1.5 }
+        ),
+      },
+      {
+        key: "countStyle",
+        value: JSON.stringify(
+          body.countStyle || { color: "#ffffff", size: 1.25 }
+        ),
+      },
       { key: "qrSize", value: String(body.qrSize || 300) },
       { key: "title", value: body.title || "Lucky Draw" },
       { key: "subtitle", value: body.subtitle || "ลุ้นรับรางวัลใหญ่" },
@@ -49,6 +67,9 @@ export default defineEventHandler(async (event) => {
         "titlePosition",
         "subtitlePosition",
         "countPosition",
+        "titleStyle",
+        "subtitleStyle",
+        "countStyle",
       ];
       acc[curr.key] = jsonFields.includes(curr.key)
         ? JSON.parse(curr.value)

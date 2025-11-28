@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
       titlePosition: JSON.stringify({ x: 960, y: 540 }), // Default center
       subtitlePosition: JSON.stringify({ x: 960, y: 600 }), // Default below title
       countPosition: JSON.stringify({ x: 960, y: 660 }), // Default below subtitle
+      titleStyle: JSON.stringify({ color: "#ffffff", size: 3.1 }),
+      subtitleStyle: JSON.stringify({ color: "#ffffff", size: 1.5 }),
+      countStyle: JSON.stringify({ color: "#ffffff", size: 1.25 }),
       qrSize: "300",
       title: "Lucky Draw",
       subtitle: "ลุ้นรับรางวัลใหญ่",
@@ -36,6 +39,9 @@ export default defineEventHandler(async (event) => {
       "titlePosition",
       "subtitlePosition",
       "countPosition",
+      "titleStyle",
+      "subtitleStyle",
+      "countStyle",
     ];
     jsonFields.forEach((field) => {
       try {
@@ -51,6 +57,12 @@ export default defineEventHandler(async (event) => {
           finalSettings[field] = { x: 960, y: 600 };
         if (field === "countPosition")
           finalSettings[field] = { x: 960, y: 660 };
+        if (field === "titleStyle")
+          finalSettings[field] = { color: "#ffffff", size: 3.1 };
+        if (field === "subtitleStyle")
+          finalSettings[field] = { color: "#ffffff", size: 1.5 };
+        if (field === "countStyle")
+          finalSettings[field] = { color: "#ffffff", size: 1.25 };
       }
     });
 
