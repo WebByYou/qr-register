@@ -22,6 +22,10 @@ export default defineEventHandler(async (event) => {
         key: "subtitlePosition",
         value: JSON.stringify(body.subtitlePosition || { x: 960, y: 600 }),
       },
+      {
+        key: "countPosition",
+        value: JSON.stringify(body.countPosition || { x: 960, y: 660 }),
+      },
       { key: "qrSize", value: String(body.qrSize || 300) },
       { key: "title", value: body.title || "Lucky Draw" },
       { key: "subtitle", value: body.subtitle || "ลุ้นรับรางวัลใหญ่" },
@@ -40,7 +44,12 @@ export default defineEventHandler(async (event) => {
     );
 
     const settings = settingsToSave.reduce((acc, curr) => {
-      const jsonFields = ["qrPosition", "titlePosition", "subtitlePosition"];
+      const jsonFields = [
+        "qrPosition",
+        "titlePosition",
+        "subtitlePosition",
+        "countPosition",
+      ];
       acc[curr.key] = jsonFields.includes(curr.key)
         ? JSON.parse(curr.value)
         : curr.value;

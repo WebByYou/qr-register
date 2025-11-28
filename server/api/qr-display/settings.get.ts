@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
       qrPosition: JSON.stringify({ x: 300, y: 150 }),
       titlePosition: JSON.stringify({ x: 960, y: 540 }), // Default center
       subtitlePosition: JSON.stringify({ x: 960, y: 600 }), // Default below title
+      countPosition: JSON.stringify({ x: 960, y: 660 }), // Default below subtitle
       qrSize: "300",
       title: "Lucky Draw",
       subtitle: "ลุ้นรับรางวัลใหญ่",
@@ -30,7 +31,12 @@ export default defineEventHandler(async (event) => {
     const finalSettings: any = { ...rawSettings };
 
     // Parse JSON fields
-    const jsonFields = ["qrPosition", "titlePosition", "subtitlePosition"];
+    const jsonFields = [
+      "qrPosition",
+      "titlePosition",
+      "subtitlePosition",
+      "countPosition",
+    ];
     jsonFields.forEach((field) => {
       try {
         if (typeof finalSettings[field] === "string") {
@@ -43,6 +49,8 @@ export default defineEventHandler(async (event) => {
           finalSettings[field] = { x: 960, y: 540 };
         if (field === "subtitlePosition")
           finalSettings[field] = { x: 960, y: 600 };
+        if (field === "countPosition")
+          finalSettings[field] = { x: 960, y: 660 };
       }
     });
 

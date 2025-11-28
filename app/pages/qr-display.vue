@@ -6,6 +6,7 @@ const settings = ref({
   qrPosition: { x: 300, y: 150 },
   titlePosition: { x: 960, y: 540 },
   subtitlePosition: { x: 960, y: 600 },
+  countPosition: { x: 960, y: 660 },
   qrSize: 300,
   title: "Lucky Draw",
   subtitle: "ลุ้นรับรางวัลใหญ่",
@@ -70,10 +71,11 @@ onUnmounted(() => {
 const route = useRoute();
 const isPreview = computed(() => route.query.preview === "true");
 const qrElement = ref<HTMLElement | null>(null);
-const isDragging = ref<string | null>(null); // 'qr', 'title', 'subtitle' or null
+const isDragging = ref<string | null>(null); // 'qr', 'title', 'subtitle', 'count' or null
 
 // Handle messages from Admin Panel
 const handleMessage = (event: MessageEvent) => {
+  if (isDragging.value) return; // Ignore updates while dragging to prevent loop/bounce
   if (event.data.type === "UPDATE_SETTINGS") {
     // Update local settings from parent
     settings.value = { ...settings.value, ...event.data.settings };
@@ -100,6 +102,9 @@ const startDrag = (e: MouseEvent, type: string) => {
   } else if (type === "subtitle") {
     startLeft = settings.value.subtitlePosition.x;
     startTop = settings.value.subtitlePosition.y;
+  } else if (type === "count") {
+    startLeft = settings.value.countPosition.x;
+    startTop = settings.value.countPosition.y;
   }
 
   // Calculate scale based on the 16:9 container width vs 1920
@@ -147,6 +152,15 @@ const startDrag = (e: MouseEvent, type: string) => {
       window.parent.postMessage(
         {
           type: "UPDATE_SUBTITLE_POSITION",
+          position: { x: newX, y: newY },
+        },
+        "*"
+      );
+    } else if (type === "count") {
+      settings.value.countPosition = { x: newX, y: newY };
+      window.parent.postMessage(
+        {
+          type: "UPDATE_COUNT_POSITION",
           position: { x: newX, y: newY },
         },
         "*"
@@ -358,11 +372,16 @@ onMounted(() => {
         <div
           v-if="settings.showCount"
           class="absolute transition-all duration-75 ease-out text-white font-light tracking-wider text-[1.25cqw] whitespace-nowrap"
-          :style="{
-            left: '50%',
-            top: '60%',
-            transform: 'translate(-50%, -50%)',
+          :class="{
+            'cursor-move hover:ring-2 ring-blue-500 rounded': isPreview,
           }"
+          :style="{
+            left: `${(settings.countPosition.x / 1920) * 100}%`,
+            top: `${(settings.countPosition.y / 1080) * 100}%`,
+            transform: 'translate(-50%, -50%)',
+            zIndex: isDragging === 'count' ? 50 : 30,
+          }"
+          @mousedown="(e) => startDrag(e, 'count')"
         >
           ลงทะเบียนแล้ว
           <span class="font-bold text-[1.5cqw]">{{ registrationCount }}</span>
