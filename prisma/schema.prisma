@@ -17,3 +17,18 @@ model Registration {
   employeeId String   @unique
   createdAt  DateTime @default(now())
 }
+
+model SystemSetting {
+  key   String @id
+  value String
+}
+
+model LuckyDrawHistory {
+  id         Int      @id @default(autoincrement())
+  employeeId String
+  firstName  String
+  lastName   String
+  department String?
+  prize      String?
+  wonAt      DateTime @default(now())
+}

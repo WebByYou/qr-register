@@ -24,7 +24,117 @@ let broadcastChannel: BroadcastChannel | null = null;
 let displayWindow: Window | null = null;
 const displayUrl = ref("");
 
-onMounted(() => {
+const settings = ref({
+  title: "",
+  subtitle: "",
+  waitText: "",
+});
+
+// Inline editing state
+const editingField = ref<string | null>(null);
+const tempValue = ref("");
+
+const startEdit = (field: string, value: string) => {
+  editingField.value = field;
+  tempValue.value = value;
+};
+
+const cancelEdit = () => {
+  editingField.value = null;
+  tempValue.value = "";
+};
+
+const isSaving = ref(false);
+
+const saveEdit = async () => {
+  if (!editingField.value || isSaving.value) return;
+
+  const field = editingField.value;
+  const value = tempValue.value;
+
+  isSaving.value = true;
+
+  // Optimistic update
+  const originalValue = (settings.value as any)[field];
+  (settings.value as any)[field] = value;
+
+  try {
+    await $fetch("/api/settings", {
+      method: "POST",
+      body: settings.value,
+    });
+    editingField.value = null;
+    tempValue.value = "";
+  } catch (error) {
+    console.error("Error saving settings:", error);
+    showError("บันทึกการตั้งค่าไม่สำเร็จ", "ข้อผิดพลาด");
+    // Revert on error
+    (settings.value as any)[field] = originalValue;
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const editingWinnerId = ref<number | null>(null);
+const tempPrizeValue = ref("");
+const isSavingPrize = ref(false);
+
+const startEditPrize = (winner: any) => {
+  editingWinnerId.value = winner.id;
+  tempPrizeValue.value =
+    winner.prize ||
+    `รางวัลที่ ${winners.value.length - winners.value.indexOf(winner)}`;
+};
+
+const cancelEditPrize = () => {
+  editingWinnerId.value = null;
+  tempPrizeValue.value = "";
+};
+
+const savePrize = async (winner: any) => {
+  if (isSavingPrize.value) return;
+  isSavingPrize.value = true;
+
+  try {
+    await $fetch("/api/lucky-draw/history", {
+      method: "PUT",
+      body: {
+        id: winner.id,
+        prize: tempPrizeValue.value,
+      },
+    });
+
+    // Update local state
+    winner.prize = tempPrizeValue.value;
+    editingWinnerId.value = null;
+    tempPrizeValue.value = "";
+  } catch (error) {
+    console.error("Error saving prize:", error);
+    showError("บันทึกรางวัลไม่สำเร็จ", "ข้อผิดพลาด");
+  } finally {
+    isSavingPrize.value = false;
+  }
+};
+
+const loadSettings = async () => {
+  try {
+    const response: any = await $fetch("/api/qr-display/settings");
+    if (response?.success && response?.data) {
+      settings.value = {
+        ...settings.value,
+        ...response.data,
+      };
+    }
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  }
+};
+
+const isLoading = ref(true);
+
+onMounted(async () => {
+  await Promise.all([loadSettings(), loadHistory()]);
+  isLoading.value = false;
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
     broadcastChannel = new BroadcastChannel("lucky-draw-channel");
 
@@ -128,8 +238,25 @@ const startDraw = () => {
   );
 
   // Wait for animation to finish before showing winner in table
-  setTimeout(() => {
+  setTimeout(async () => {
     isSpinning.value = false;
+
+    // Save winner to DB
+    try {
+      await $fetch("/api/lucky-draw/history", {
+        method: "POST",
+        body: {
+          employeeId: selectedWinner.employeeId,
+          firstName: selectedWinner.firstName,
+          lastName: selectedWinner.lastName,
+          department: (selectedWinner as any).department || "",
+          wonAt: new Date(),
+        },
+      });
+    } catch (error) {
+      console.error("Error saving winner:", error);
+    }
+
     winners.value.unshift({
       ...selectedWinner,
       wonAt: new Date(),
@@ -148,6 +275,20 @@ const startDraw = () => {
       JSON.stringify({ ...winnerMessage, timestamp: Date.now() })
     );
   }, spinDuration);
+};
+
+const loadHistory = async () => {
+  try {
+    const response: any = await $fetch("/api/lucky-draw/history");
+    if (response?.success && response?.data) {
+      winners.value = response.data.map((w: any) => ({
+        ...w,
+        wonAt: new Date(w.wonAt),
+      }));
+    }
+  } catch (error) {
+    console.error("Error loading history:", error);
+  }
 };
 
 const reset = () => {
@@ -202,7 +343,11 @@ const reset = () => {
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">ผู้ลงทะเบียนทั้งหมด</p>
-            <h3 class="text-2xl font-bold text-gray-800">
+            <div
+              v-if="isLoading"
+              class="h-8 w-16 bg-gray-200 rounded animate-pulse mt-1"
+            ></div>
+            <h3 v-else class="text-2xl font-bold text-gray-800">
               {{ allRegistrations.length }}
             </h3>
           </div>
@@ -229,7 +374,11 @@ const reset = () => {
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">ผู้โชคดี</p>
-            <h3 class="text-2xl font-bold text-gray-800">
+            <div
+              v-if="isLoading"
+              class="h-8 w-16 bg-gray-200 rounded animate-pulse mt-1"
+            ></div>
+            <h3 v-else class="text-2xl font-bold text-gray-800">
               {{ winners.length }}
             </h3>
           </div>
@@ -256,7 +405,11 @@ const reset = () => {
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">เหลือสิทธิ์ลุ้น</p>
-            <h3 class="text-2xl font-bold text-gray-800">
+            <div
+              v-if="isLoading"
+              class="h-8 w-16 bg-gray-200 rounded animate-pulse mt-1"
+            ></div>
+            <h3 v-else class="text-2xl font-bold text-gray-800">
               {{
                 isPrizeLimited ? Math.max(0, totalPrizes - winners.length) : "∞"
               }}
@@ -292,40 +445,144 @@ const reset = () => {
                   <th class="w-16 text-center">ลำดับ</th>
                   <th>ชื่อ-นามสกุล</th>
                   <th>รหัสพนักงาน</th>
-                  <th>เวลาที่ได้รับ</th>
+                  <th>รางวัลที่ได้รับ</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="winners.length === 0">
-                  <td colspan="4" class="text-center py-8 text-gray-400">
-                    ยังไม่มีผู้โชคดี
-                  </td>
-                </tr>
-                <tr
-                  v-for="(winner, index) in winners"
-                  :key="index"
-                  class="hover:bg-gray-50 transition-colors"
-                >
-                  <td class="text-center font-bold text-gray-500">
-                    {{ winners.length - index }}
-                  </td>
-                  <td>
-                    <div class="font-bold text-gray-800">
-                      {{ winner.firstName }} {{ winner.lastName }}
-                    </div>
-                    <div class="text-xs text-gray-500">
-                      {{ winner.department }}
-                    </div>
-                  </td>
-                  <td>
-                    <span class="badge badge-ghost font-mono">{{
-                      winner.employeeId
-                    }}</span>
-                  </td>
-                  <td class="text-sm text-gray-500">
-                    {{ new Date(winner.wonAt).toLocaleTimeString("th-TH") }}
-                  </td>
-                </tr>
+                <template v-if="isLoading">
+                  <tr v-for="i in 5" :key="i" class="animate-pulse">
+                    <td class="text-center">
+                      <div
+                        class="h-6 w-6 bg-gray-200 rounded-full mx-auto"
+                      ></div>
+                    </td>
+                    <td>
+                      <div class="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+                      <div class="h-3 w-20 bg-gray-200 rounded"></div>
+                    </td>
+                    <td>
+                      <div class="h-6 w-16 bg-gray-200 rounded mx-auto"></div>
+                    </td>
+                    <td><div class="h-4 w-24 bg-gray-200 rounded"></div></td>
+                  </tr>
+                </template>
+                <template v-else>
+                  <tr v-if="winners.length === 0">
+                    <td colspan="4" class="text-center py-8 text-gray-400">
+                      ยังไม่มีผู้โชคดี
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="(winner, index) in winners"
+                    :key="index"
+                    class="hover:bg-gray-50 transition-colors"
+                  >
+                    <td class="text-center font-bold text-gray-500">
+                      {{ winners.length - index }}
+                    </td>
+                    <td>
+                      <div class="font-bold text-gray-800">
+                        {{ winner.firstName }} {{ winner.lastName }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ winner.department }}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge badge-ghost font-mono">{{
+                        winner.employeeId
+                      }}</span>
+                    </td>
+                    <td class="text-sm text-gray-500">
+                      <div
+                        v-if="editingWinnerId === winner.id"
+                        class="flex gap-2 items-center"
+                      >
+                        <input
+                          v-model="tempPrizeValue"
+                          type="text"
+                          class="input input-bordered input-sm w-full max-w-[150px]"
+                          @keyup.enter="savePrize(winner)"
+                          @keyup.esc="cancelEditPrize"
+                          :disabled="isSavingPrize"
+                          autoFocus
+                        />
+                        <button
+                          @click="savePrize(winner)"
+                          class="btn btn-square btn-success btn-xs"
+                          :disabled="isSavingPrize"
+                        >
+                          <span
+                            v-if="isSavingPrize"
+                            class="loading loading-spinner loading-xs"
+                          ></span>
+                          <svg
+                            v-else
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-3 w-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          @click="cancelEditPrize"
+                          class="btn btn-square btn-error btn-xs"
+                          :disabled="isSavingPrize"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-3 w-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div
+                        v-else
+                        class="flex justify-between items-center group"
+                      >
+                        <span>{{
+                          winner.prize || `รางวัลที่ ${winners.length - index}`
+                        }}</span>
+                        <button
+                          @click="startEditPrize(winner)"
+                          class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-3 w-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -452,6 +709,293 @@ const reset = () => {
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h3 class="text-lg font-bold text-gray-800 mb-4">ตั้งค่าการสุ่ม</h3>
           <div class="space-y-4">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">หัวข้อ (Title)</span>
+              </label>
+              <div
+                v-if="isLoading"
+                class="h-12 w-full bg-gray-200 rounded-lg animate-pulse"
+              ></div>
+              <div v-else-if="editingField === 'title'" class="flex gap-2">
+                <input
+                  v-model="tempValue"
+                  type="text"
+                  class="input input-bordered w-full"
+                  placeholder="Lucky Draw"
+                  @keyup.enter="saveEdit"
+                  @keyup.esc="cancelEdit"
+                  :disabled="isSaving"
+                  autoFocus
+                />
+                <button
+                  @click="saveEdit"
+                  class="btn btn-square btn-success btn-sm"
+                  :disabled="isSaving"
+                >
+                  <span
+                    v-if="isSaving"
+                    class="loading loading-spinner loading-xs"
+                  ></span>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </button>
+                <button
+                  @click="cancelEdit"
+                  class="btn btn-square btn-error btn-sm"
+                  :disabled="isSaving"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div
+                v-else
+                class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                <span class="font-medium text-gray-700">{{
+                  settings.title || "Lucky Draw"
+                }}</span>
+                <button
+                  @click="startEdit('title', settings.title)"
+                  class="btn btn-ghost btn-xs text-gray-500 hover:text-primary"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                  แก้ไข
+                </button>
+              </div>
+            </div>
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">คำโปรย (Subtitle)</span>
+              </label>
+              <div
+                v-if="isLoading"
+                class="h-12 w-full bg-gray-200 rounded-lg animate-pulse"
+              ></div>
+              <div v-else-if="editingField === 'subtitle'" class="flex gap-2">
+                <input
+                  v-model="tempValue"
+                  type="text"
+                  class="input input-bordered w-full"
+                  placeholder="ลุ้นรับรางวัลใหญ่"
+                  @keyup.enter="saveEdit"
+                  @keyup.esc="cancelEdit"
+                  :disabled="isSaving"
+                  autoFocus
+                />
+                <button
+                  @click="saveEdit"
+                  class="btn btn-square btn-success btn-sm"
+                  :disabled="isSaving"
+                >
+                  <span
+                    v-if="isSaving"
+                    class="loading loading-spinner loading-xs"
+                  ></span>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </button>
+                <button
+                  @click="cancelEdit"
+                  class="btn btn-square btn-error btn-sm"
+                  :disabled="isSaving"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div
+                v-else
+                class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                <span class="font-medium text-gray-700">{{
+                  settings.subtitle || "ลุ้นรับรางวัลใหญ่"
+                }}</span>
+                <button
+                  @click="startEdit('subtitle', settings.subtitle)"
+                  class="btn btn-ghost btn-xs text-gray-500 hover:text-primary"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                  แก้ไข
+                </button>
+              </div>
+            </div>
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">ข้อความรอ (Wait Text)</span>
+              </label>
+              <div
+                v-if="isLoading"
+                class="h-12 w-full bg-gray-200 rounded-lg animate-pulse"
+              ></div>
+              <div v-else-if="editingField === 'waitText'" class="flex gap-2">
+                <input
+                  v-model="tempValue"
+                  type="text"
+                  class="input input-bordered w-full"
+                  placeholder="รอลุ้นรางวัล..."
+                  @keyup.enter="saveEdit"
+                  @keyup.esc="cancelEdit"
+                  :disabled="isSaving"
+                  autoFocus
+                />
+                <button
+                  @click="saveEdit"
+                  class="btn btn-square btn-success btn-sm"
+                  :disabled="isSaving"
+                >
+                  <span
+                    v-if="isSaving"
+                    class="loading loading-spinner loading-xs"
+                  ></span>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </button>
+                <button
+                  @click="cancelEdit"
+                  class="btn btn-square btn-error btn-sm"
+                  :disabled="isSaving"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div
+                v-else
+                class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                <span class="font-medium text-gray-700">{{
+                  settings.waitText || "รอลุ้นรางวัล..."
+                }}</span>
+                <button
+                  @click="startEdit('waitText', settings.waitText)"
+                  class="btn btn-ghost btn-xs text-gray-500 hover:text-primary"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                  แก้ไข
+                </button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
             <div class="form-control">
               <label class="label cursor-pointer justify-start gap-4">
                 <input

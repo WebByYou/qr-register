@@ -14,7 +14,54 @@ const lastMessageType = ref("");
 const debugLogs = ref<string[]>([]);
 const showDebug = ref(false);
 
+const settings = ref({
+  title: "จับฉลากผู้โชคดี",
+  subtitle: "งานเลี้ยงปีใหม่ ๒๕๖๙",
+  waitText: "รอการสุ่มรางวัล...",
+});
+
+const isLoading = ref(true);
+
+const loadSettings = async () => {
+  try {
+    const response: any = await $fetch("/api/qr-display/settings");
+    if (response?.success && response?.data) {
+      settings.value = {
+        ...settings.value,
+        ...response.data,
+      };
+    }
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 onMounted(() => {
+  loadSettings();
+
+  // Subscribe to SSE stream
+  let eventSource: EventSource | null = null;
+  if (typeof window !== "undefined") {
+    eventSource = new EventSource("/api/qr-display/stream");
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Update settings if changed
+        if (data.title || data.subtitle || data.waitText) {
+          settings.value = {
+            ...settings.value,
+            ...data,
+          };
+        }
+      } catch (e) {
+        console.error("Error parsing SSE data:", e);
+      }
+    };
+  }
+
   const route = useRoute();
   if (route.query.debug === "true") {
     showDebug.value = true;
@@ -256,20 +303,30 @@ onUnmounted(() => {
       >
         <!-- Header -->
         <div class="text-center mb-16 relative">
-          <h1
-            class="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-[#FFD700] via-[#FCEEAC] to-[#DAA520] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] tracking-wide mb-4 py-4 leading-relaxed"
-          >
-            จับฉลากผู้โชคดี
-          </h1>
-          <div class="flex items-center justify-center gap-4">
-            <div class="h-[2px] w-12 bg-[#FFD700]"></div>
-            <p
-              class="text-2xl md:text-3xl text-[#FFD700] font-light tracking-widest pt-2"
-            >
-              งานเลี้ยงปีใหม่ ๒๕๖๙
-            </p>
-            <div class="h-[2px] w-12 bg-[#FFD700]"></div>
+          <div v-if="isLoading" class="flex flex-col items-center gap-4">
+            <div
+              class="h-24 w-3/4 bg-[#FFD700]/20 rounded-lg animate-pulse"
+            ></div>
+            <div
+              class="h-8 w-1/2 bg-[#FFD700]/20 rounded-lg animate-pulse"
+            ></div>
           </div>
+          <template v-else>
+            <h1
+              class="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-[#FFD700] via-[#FCEEAC] to-[#DAA520] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] tracking-wide mb-4 py-4 leading-relaxed"
+            >
+              {{ settings.title }}
+            </h1>
+            <div class="flex items-center justify-center gap-4">
+              <div class="h-[2px] w-12 bg-[#FFD700]"></div>
+              <p
+                class="text-2xl md:text-3xl text-[#FFD700] font-light tracking-widest pt-2"
+              >
+                {{ settings.subtitle }}
+              </p>
+              <div class="h-[2px] w-12 bg-[#FFD700]"></div>
+            </div>
+          </template>
         </div>
 
         <!-- Slot Machine Frame -->
@@ -330,7 +387,7 @@ onUnmounted(() => {
             v-else
             class="text-3xl text-[#FFD700]/60 font-bold drop-shadow-lg font-sarabun"
           >
-            รอการสุ่มรางวัล...
+            {{ settings.waitText }}
           </div>
         </div>
       </div>
@@ -346,7 +403,23 @@ onUnmounted(() => {
         </h2>
 
         <div class="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-          <TransitionGroup name="list">
+          <!-- Skeleton Loading -->
+          <div v-if="isLoading" class="space-y-4">
+            <div
+              v-for="i in 5"
+              :key="'skeleton-' + i"
+              class="bg-gradient-to-r from-[#4A0404] to-[#2D0A0A] p-4 rounded-lg border border-[#FFD700]/30 shadow-lg flex items-center gap-4 animate-pulse"
+            >
+              <div class="w-10 h-10 rounded-full bg-[#FFD700]/20"></div>
+              <div class="flex-1 space-y-2">
+                <div class="h-4 w-3/4 bg-[#FFD700]/20 rounded"></div>
+                <div class="h-3 w-1/2 bg-[#FFD700]/20 rounded"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Winners List -->
+          <TransitionGroup v-else name="list" tag="div" class="space-y-4">
             <div
               v-for="(w, index) in winnersList"
               :key="w.id || index"
@@ -363,6 +436,9 @@ onUnmounted(() => {
                 >
                   {{ w.firstName }} {{ w.lastName }}
                 </div>
+                <div class="text-xs text-gray-500">
+                  {{ w.department }}
+                </div>
                 <div class="text-[#FFD700]/60 text-sm font-sarabun">
                   รหัส: {{ w.employeeId }}
                 </div>
@@ -371,7 +447,7 @@ onUnmounted(() => {
           </TransitionGroup>
 
           <div
-            v-if="winnersList.length === 0"
+            v-if="!isLoading && winnersList.length === 0"
             class="text-center text-[#FFD700]/40 mt-10 font-sarabun"
           >
             ยังไม่มีผู้โชคดี
