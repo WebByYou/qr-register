@@ -16,10 +16,12 @@ export default defineEventHandler(async (event) => {
     const defaultSettings = {
       backgroundImage: "",
       qrPosition: JSON.stringify({ x: 300, y: 150 }),
+      titlePosition: JSON.stringify({ x: 960, y: 540 }), // Default center
+      subtitlePosition: JSON.stringify({ x: 960, y: 600 }), // Default below title
       qrSize: "300",
       title: "Lucky Draw",
       subtitle: "ลุ้นรับรางวัลใหญ่",
-      waitText: "รอลุ้นรางวัล...",
+      showCount: "false",
     };
 
     // Merge defaults with stored settings
@@ -27,21 +29,28 @@ export default defineEventHandler(async (event) => {
 
     const finalSettings: any = { ...rawSettings };
 
-    // Parse JSON fields if needed (qrPosition is stored as string but used as object in frontend sometimes,
-    // but based on previous code it seems it might be expected as object.
-    // Let's check how it was used. The original code read from JSON file where it was likely an object.
-    // Prisma stores strings. So we need to parse qrPosition if it's a string.
-
-    try {
-      if (typeof finalSettings.qrPosition === "string") {
-        finalSettings.qrPosition = JSON.parse(finalSettings.qrPosition);
+    // Parse JSON fields
+    const jsonFields = ["qrPosition", "titlePosition", "subtitlePosition"];
+    jsonFields.forEach((field) => {
+      try {
+        if (typeof finalSettings[field] === "string") {
+          finalSettings[field] = JSON.parse(finalSettings[field]);
+        }
+      } catch (e) {
+        // Fallback defaults if parse fails
+        if (field === "qrPosition") finalSettings[field] = { x: 300, y: 150 };
+        if (field === "titlePosition")
+          finalSettings[field] = { x: 960, y: 540 };
+        if (field === "subtitlePosition")
+          finalSettings[field] = { x: 960, y: 600 };
       }
-    } catch (e) {
-      finalSettings.qrPosition = { x: 300, y: 150 };
-    }
+    });
 
     // Ensure qrSize is number
     finalSettings.qrSize = Number(finalSettings.qrSize);
+
+    // Ensure showCount is boolean
+    finalSettings.showCount = finalSettings.showCount === "true";
 
     return {
       success: true,
@@ -59,7 +68,7 @@ export default defineEventHandler(async (event) => {
         qrSize: 300,
         title: "Lucky Draw",
         subtitle: "ลุ้นรับรางวัลใหญ่",
-        waitText: "รอลุ้นรางวัล...",
+        showCount: false,
       },
     };
   }

@@ -19,6 +19,19 @@ export default defineEventHandler(async (event) => {
       },
     });
 
+    // Also update qrSize for display settings to keep them in sync
+    if (body.size) {
+      await prisma.systemSetting.upsert({
+        where: { key: "qrSize" },
+        update: { value: String(body.size) },
+        create: { key: "qrSize", value: String(body.size) },
+      });
+
+      // Emit update event for display
+      const { qrDisplayEmitter } = await import("../../utils/qr-display");
+      qrDisplayEmitter.emit("update", { qrSize: Number(body.size) });
+    }
+
     return {
       success: true,
       data: JSON.parse(setting.value),

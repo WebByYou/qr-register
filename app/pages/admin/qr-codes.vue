@@ -17,6 +17,19 @@ const isSaving = ref(false);
 
 const { showSuccess, showError } = useSwal();
 
+// Display Settings
+const displaySettings = ref({
+  backgroundImage: "",
+  qrPosition: { x: 300, y: 150 },
+  titlePosition: { x: 960, y: 540 },
+  subtitlePosition: { x: 960, y: 600 },
+  qrSize: 300,
+  title: "",
+  subtitle: "",
+  showCount: false,
+});
+const isSavingDisplay = ref(false);
+
 // Get full registration URL
 onMounted(async () => {
   const baseUrl = window.location.origin;
@@ -27,12 +40,29 @@ onMounted(async () => {
 
 const loadSettings = async () => {
   try {
-    const response: any = await $fetch("/api/qr-code/settings");
-    if (response?.success && response?.data) {
-      qrSize.value = response.data.size || 300;
-      qrColor.value = response.data.color || "#000000";
-      qrBgColor.value = response.data.bgColor || "#ffffff";
-      showOnDisplay.value = response.data.showOnDisplay || false;
+    const [qrRes, displayRes]: [any, any] = await Promise.all([
+      $fetch("/api/qr-code/settings"),
+      $fetch("/api/qr-display/settings"),
+    ]);
+
+    if (qrRes?.success && qrRes?.data) {
+      qrSize.value = qrRes.data.size || 300;
+      qrColor.value = qrRes.data.color || "#000000";
+      qrBgColor.value = qrRes.data.bgColor || "#ffffff";
+      showOnDisplay.value = qrRes.data.showOnDisplay || false;
+    }
+
+    if (displayRes?.success && displayRes?.data) {
+      displaySettings.value.backgroundImage =
+        displayRes.data.backgroundImage || "";
+      if (displayRes.data.qrPosition) {
+        displaySettings.value.qrPosition = displayRes.data.qrPosition;
+      }
+      displaySettings.value.qrSize = displayRes.data.qrSize || 300;
+      displaySettings.value.title = displayRes.data.title || "Lucky Draw";
+      displaySettings.value.subtitle =
+        displayRes.data.subtitle || "ลุ้นรับรางวัลใหญ่";
+      displaySettings.value.showCount = displayRes.data.showCount || false;
     }
   } catch (error) {
     console.error("Error loading settings:", error);
@@ -80,10 +110,9 @@ const generateQRCode = async () => {
   }
 };
 
-// Watch for changes and regenerate/save
+// Watch for changes and regenerate (but don't auto-save)
 watch([qrSize, qrColor, qrBgColor, showOnDisplay], () => {
   generateQRCode();
-  saveSettings();
 });
 
 const downloadQR = () => {
@@ -120,6 +149,72 @@ const printQR = () => {
   }, 500);
 };
 
+// Iframe Communication
+const previewIframe = ref<HTMLIFrameElement | null>(null);
+
+// Listen for messages from iframe (drag updates)
+const handleIframeMessage = (event: MessageEvent) => {
+  if (event.data.type === "UPDATE_QR_POSITION") {
+    displaySettings.value.qrPosition = event.data.position;
+  } else if (event.data.type === "UPDATE_TITLE_POSITION") {
+    displaySettings.value.titlePosition = event.data.position;
+  } else if (event.data.type === "UPDATE_SUBTITLE_POSITION") {
+    displaySettings.value.subtitlePosition = event.data.position;
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("message", handleIframeMessage);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("message", handleIframeMessage);
+});
+
+// Sync settings to iframe
+watch(
+  displaySettings,
+  (newSettings) => {
+    if (previewIframe.value?.contentWindow) {
+      // Deep clone to remove Proxy wrappers and avoid DataCloneError
+      const plainSettings = JSON.parse(JSON.stringify(newSettings));
+      previewIframe.value.contentWindow.postMessage(
+        {
+          type: "UPDATE_SETTINGS",
+          settings: plainSettings,
+        },
+        "*"
+      );
+    }
+  },
+  { deep: true }
+);
+
+const saveDisplaySettings = async () => {
+  isSavingDisplay.value = true;
+  try {
+    await $fetch("/api/qr-display/settings", {
+      method: "POST",
+      body: {
+        backgroundImage: displaySettings.value.backgroundImage,
+        qrPosition: displaySettings.value.qrPosition,
+        titlePosition: displaySettings.value.titlePosition,
+        subtitlePosition: displaySettings.value.subtitlePosition,
+        qrSize: displaySettings.value.qrSize,
+        title: displaySettings.value.title,
+        subtitle: displaySettings.value.subtitle,
+        showCount: displaySettings.value.showCount,
+      },
+    });
+    showSuccess("บันทึกการตั้งค่าหน้าจอสำเร็จ", "สำเร็จ!");
+  } catch (error) {
+    console.error("Error saving display settings:", error);
+    showError("บันทึกการตั้งค่าหน้าจอไม่สำเร็จ", "ข้อผิดพลาด");
+  } finally {
+    isSavingDisplay.value = false;
+  }
+};
+
 const copyUrl = async () => {
   try {
     await navigator.clipboard.writeText(registrationUrl.value);
@@ -149,7 +244,7 @@ const copyUrl = async () => {
         <div class="card-body items-center">
           <h3 class="card-title mb-4">ตัวอย่าง QR Code</h3>
 
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden p-4">
+          <div>
             <div
               v-if="isLoading"
               class="w-64 h-64 bg-gray-200 animate-pulse rounded-lg"
@@ -222,6 +317,27 @@ const copyUrl = async () => {
               คัดลอก URL
             </button>
           </div>
+
+          <!-- Info -->
+          <div class="alert alert-info mt-6">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              class="stroke-current shrink-0 w-6 h-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            <span class="text-sm">
+              QR Code นี้จะลิงก์ไปยังหน้าลงทะเบียน
+              สามารถพิมพ์หรือแชร์ให้ผู้ใช้สแกนได้เลย
+            </span>
+          </div>
         </div>
       </div>
 
@@ -250,10 +366,10 @@ const copyUrl = async () => {
           <div class="divider"></div>
 
           <!-- Size -->
-          <div class="form-control">
-            <label class="label">
+          <!-- Size -->
+          <div class="form-control w-full">
+            <label class="label cursor-pointer pb-2">
               <span class="label-text font-semibold">ขนาด</span>
-              <span class="label-text-alt">{{ qrSize }}x{{ qrSize }} px</span>
             </label>
             <input
               v-model="qrSize"
@@ -261,12 +377,8 @@ const copyUrl = async () => {
               min="200"
               max="1000"
               step="50"
-              class="range range-primary"
+              class="range range-primary w-full"
             />
-            <div class="flex justify-between text-xs px-2 mt-1">
-              <span>200px</span>
-              <span>1000px</span>
-            </div>
           </div>
 
           <!-- QR Color -->
@@ -358,25 +470,129 @@ const copyUrl = async () => {
             </button>
           </div>
 
-          <!-- Info -->
-          <div class="alert alert-info mt-6">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              class="stroke-current shrink-0 w-6 h-6"
+          <div class="mt-6">
+            <button
+              class="btn btn-primary w-full"
+              @click="saveSettings"
+              :disabled="isSaving"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span class="text-sm">
-              QR Code นี้จะลิงก์ไปยังหน้าลงทะเบียน
-              สามารถพิมพ์หรือแชร์ให้ผู้ใช้สแกนได้เลย
-            </span>
+              <span
+                v-if="isSaving"
+                class="loading loading-spinner loading-xs"
+              ></span>
+              บันทึกการตั้งค่า QR Code
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Display Management -->
+    <div class="card bg-base-100 border border-base-300 mt-6">
+      <div class="card-body">
+        <h3 class="card-title mb-4">จัดการหน้าจอแสดงผล (QR Display)</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Settings Form -->
+          <div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-semibold"
+                  >รูปภาพพื้นหลัง (URL)</span
+                >
+              </label>
+              <input
+                v-model="displaySettings.backgroundImage"
+                type="text"
+                class="input input-bordered w-full"
+                placeholder="https://example.com/background.jpg"
+              />
+              <div class="text-xs text-base-content/60 mt-1">
+                ใส่ URL ของรูปภาพที่ต้องการใช้เป็นพื้นหลัง
+              </div>
+            </div>
+
+            <div class="form-control mt-4">
+              <label class="label cursor-pointer justify-start gap-4">
+                <span class="label-text font-semibold"
+                  >แสดงจำนวนผู้ลงทะเบียน</span
+                >
+                <input
+                  v-model="displaySettings.showCount"
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                />
+              </label>
+              <div class="text-xs text-base-content/60 mt-1">
+                หากเปิดใช้งาน จะแสดงจำนวนผู้ลงทะเบียนทั้งหมดแทนข้อความรอ
+              </div>
+            </div>
+
+            <div class="form-control mt-4">
+              <label class="label">
+                <span class="label-text font-semibold">หัวข้อ (Title)</span>
+              </label>
+              <input
+                v-model="displaySettings.title"
+                type="text"
+                class="input input-bordered w-full"
+                placeholder="Lucky Draw"
+              />
+            </div>
+
+            <div class="form-control mt-4">
+              <label class="label">
+                <span class="label-text font-semibold"
+                  >คำบรรยาย (Subtitle)</span
+                >
+              </label>
+              <input
+                v-model="displaySettings.subtitle"
+                type="text"
+                class="input input-bordered w-full"
+                placeholder="ลุ้นรับรางวัลใหญ่"
+              />
+            </div>
+
+            <div class="form-control mt-4 w-full">
+              <label class="label cursor-pointer pb-2">
+                <span class="label-text font-semibold">ขนาด QR Code</span>
+              </label>
+              <input
+                v-model.number="displaySettings.qrSize"
+                type="range"
+                min="100"
+                max="1000"
+                step="10"
+                class="range range-primary w-full"
+              />
+            </div>
+
+            <div class="mt-6">
+              <button
+                class="btn btn-primary"
+                @click="saveDisplaySettings"
+                :disabled="isSavingDisplay"
+              >
+                <span
+                  v-if="isSavingDisplay"
+                  class="loading loading-spinner loading-xs"
+                ></span>
+                บันทึกการตั้งค่าหน้าจอ
+              </button>
+            </div>
+          </div>
+
+          <!-- Visual Editor (Iframe) -->
+          <div
+            class="border rounded-xl overflow-hidden relative w-full aspect-video bg-gray-100"
+          >
+            <iframe
+              ref="previewIframe"
+              src="/qr-display?preview=true"
+              class="w-full h-full border-0"
+              title="QR Display Preview"
+            ></iframe>
           </div>
         </div>
       </div>

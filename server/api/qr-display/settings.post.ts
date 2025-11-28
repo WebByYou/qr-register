@@ -1,22 +1,55 @@
-import { writeFile } from "fs/promises";
-import { join } from "path";
+import { PrismaClient } from "@prisma/client";
 import { qrDisplayEmitter } from "../../utils/qr-display";
+
+const prisma = new PrismaClient();
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
 
-    const settings = {
-      backgroundImage: body.backgroundImage || "",
-      qrPosition: body.qrPosition || { x: 50, y: 50 },
-      qrSize: body.qrSize || 300,
-    };
+    // Prepare settings to save
+    const settingsToSave = [
+      { key: "backgroundImage", value: body.backgroundImage || "" },
+      {
+        key: "qrPosition",
+        value: JSON.stringify(body.qrPosition || { x: 300, y: 150 }),
+      },
+      {
+        key: "titlePosition",
+        value: JSON.stringify(body.titlePosition || { x: 960, y: 540 }),
+      },
+      {
+        key: "subtitlePosition",
+        value: JSON.stringify(body.subtitlePosition || { x: 960, y: 600 }),
+      },
+      { key: "qrSize", value: String(body.qrSize || 300) },
+      { key: "title", value: body.title || "Lucky Draw" },
+      { key: "subtitle", value: body.subtitle || "ลุ้นรับรางวัลใหญ่" },
+      { key: "showCount", value: String(body.showCount ?? false) },
+    ];
 
-    const settingsPath = join(
-      process.cwd(),
-      "server/data/qr-display-settings.json"
+    // Save each setting
+    await Promise.all(
+      settingsToSave.map((setting) =>
+        prisma.systemSetting.upsert({
+          where: { key: setting.key },
+          update: { value: setting.value },
+          create: { key: setting.key, value: setting.value },
+        })
+      )
     );
-    await writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+
+    const settings = settingsToSave.reduce((acc, curr) => {
+      const jsonFields = ["qrPosition", "titlePosition", "subtitlePosition"];
+      acc[curr.key] = jsonFields.includes(curr.key)
+        ? JSON.parse(curr.value)
+        : curr.value;
+      // Convert qrSize back to number for response
+      if (curr.key === "qrSize") acc[curr.key] = Number(curr.value);
+      // Convert showCount back to boolean for response
+      if (curr.key === "showCount") acc[curr.key] = curr.value === "true";
+      return acc;
+    }, {} as any);
 
     // Emit update event
     qrDisplayEmitter.emit("update", settings);
