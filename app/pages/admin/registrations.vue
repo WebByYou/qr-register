@@ -55,9 +55,17 @@ const toggleSort = (field: string) => {
 const { showConfirm, showError, showPasswordConfirm, showSuccess } = useSwal();
 
 const deleteRegistration = async (id: number) => {
+  const reg = registrations.value.find((r: any) => r.id === id);
+  if (!reg) return;
+
   const confirmed = await showConfirm(
-    "การลบนี้ไม่สามารถย้อนกลับได้",
-    "คุณต้องการลบรายการนี้หรือไม่?"
+    `<div class="text-lg font-bold mb-1">${reg.firstName} ${reg.lastName}</div><div class="text-base text-gray-500">รหัสพนักงาน: ${reg.employeeId}</div>`,
+    "ยืนยันการลบรายการ",
+    {
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "ลบรายการ",
+      isHtml: true,
+    }
   );
 
   if (!confirmed) return;

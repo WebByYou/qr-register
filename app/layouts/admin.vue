@@ -32,7 +32,7 @@ watch(
 
 <template>
   <div
-    class="min-h-screen bg-base-200 flex flex-col lg:flex-row font-sans lg:p-4 lg:gap-4"
+    class="h-screen overflow-hidden bg-base-200 flex flex-col lg:flex-row font-sans lg:p-4 lg:gap-4"
   >
     <!-- Mobile Header -->
     <div
@@ -152,13 +152,12 @@ watch(
         </div>
 
         <NuxtLink
-          to="/admin"
-          exact-active-class="bg-primary/10 text-primary"
+          to="/admin/lucky-draw"
+          active-class="bg-primary/10 text-primary"
           class="group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-base-content/70 hover:bg-base-200 hover:text-base-content transition-all duration-200"
         >
-          <!-- Active Indicator -->
           <span
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full opacity-0 group-[.router-link-exact-active]:opacity-100 transition-opacity"
+            class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full opacity-0 group-[.router-link-active]:opacity-100 transition-opacity"
           ></span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -171,10 +170,10 @@ watch(
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+              d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
             />
           </svg>
-          Dashboard
+          สุ่มรางวัล
         </NuxtLink>
 
         <NuxtLink
@@ -225,31 +224,6 @@ watch(
             />
           </svg>
           จัดการ QR Code
-        </NuxtLink>
-
-        <NuxtLink
-          to="/admin/lucky-draw"
-          active-class="bg-primary/10 text-primary"
-          class="group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-base-content/70 hover:bg-base-200 hover:text-base-content transition-all duration-200"
-        >
-          <span
-            class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full opacity-0 group-[.router-link-active]:opacity-100 transition-opacity"
-          ></span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
-            />
-          </svg>
-          สุ่มรางวัล
         </NuxtLink>
       </nav>
 

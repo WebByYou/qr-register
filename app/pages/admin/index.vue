@@ -2,6 +2,9 @@
 definePageMeta({
   layout: "admin",
 });
+
+const router = useRouter();
+router.push("/admin/lucky-draw");
 </script>
 
 <template>

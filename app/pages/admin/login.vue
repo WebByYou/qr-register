@@ -24,7 +24,7 @@ const handleLogin = handleSubmit(async (values) => {
       method: "POST",
       body: { password: values.password },
     });
-    router.push("/admin");
+    router.push("/admin/lucky-draw");
   } catch (e: any) {
     error.value = e.data?.statusMessage || "Login failed";
   }

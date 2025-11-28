@@ -29,12 +29,13 @@ export const useSwal = () => {
       confirmButtonColor?: string;
       cancelButtonText?: string;
       icon?: "warning" | "error" | "success" | "info" | "question";
+      isHtml?: boolean;
     } = {}
   ) => {
     const result = await Swal.fire({
       icon: options.icon || "warning",
       title,
-      text: message,
+      [options.isHtml ? "html" : "text"]: message,
       showCancelButton: true,
       confirmButtonText: options.confirmButtonText || "ยืนยัน",
       cancelButtonText: options.cancelButtonText || "ยกเลิก",
