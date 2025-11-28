@@ -143,14 +143,8 @@ const handleExport = async () => {
     if (allData.length === 0) return;
 
     const exportData = allData.map((reg: any, index: number) => {
-      // Calculate sequence number based on sort order
-      let sequenceNumber = index + 1;
-      if (sortBy.value === "createdAt" && sortOrder.value === "desc") {
-        sequenceNumber = pagination.value.total - index;
-      }
-
       return {
-        ลำดับ: sequenceNumber,
+        ลำดับ: reg.id,
         ชื่อ_นามสกุล: `${reg.firstName} ${reg.lastName}`,
         รหัสพนักงาน: reg.employeeId,
         วันที่ลงทะเบียน: new Date(reg.createdAt).toLocaleString("th-TH"),
@@ -165,19 +159,6 @@ const handleExport = async () => {
     console.error("Error exporting data:", error);
     showError("ไม่สามารถส่งออกข้อมูลได้", "เกิดข้อผิดพลาด");
   }
-};
-
-const getSequenceNumber = (index: number) => {
-  const globalIndex = (page.value - 1) * limit.value + index;
-
-  // If sorting by creation time descending, reverse the numbering
-  // so the newest record shows the highest number (Total)
-  if (sortBy.value === "createdAt" && sortOrder.value === "desc") {
-    return pagination.value.total - globalIndex;
-  }
-
-  // Otherwise (ASC or other sorts), just show the row number
-  return globalIndex + 1;
 };
 </script>
 
@@ -270,7 +251,17 @@ const getSequenceNumber = (index: number) => {
       <table class="table table-sm">
         <thead class="bg-base-200/50">
           <tr>
-            <th class="font-semibold text-base-content/70 w-16">#</th>
+            <th
+              class="font-semibold text-base-content/70 cursor-pointer hover:bg-base-300/50 select-none w-24"
+              @click="toggleSort('id')"
+            >
+              <div class="flex items-center gap-2">
+                ลำดับที่
+                <span v-if="sortBy === 'id'" class="text-xs">
+                  {{ sortOrder === "asc" ? "↑" : "↓" }}
+                </span>
+              </div>
+            </th>
             <th
               class="font-semibold text-base-content/70 cursor-pointer hover:bg-base-300/50 select-none"
               @click="toggleSort('employeeId')"
@@ -316,7 +307,7 @@ const getSequenceNumber = (index: number) => {
             class="hover:bg-base-200/30"
           >
             <td class="text-base-content/60">
-              {{ getSequenceNumber(index) }}
+              {{ reg.id }}
             </td>
             <td>
               <span class="font-mono font-medium text-primary">
