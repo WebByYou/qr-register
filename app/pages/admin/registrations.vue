@@ -389,22 +389,36 @@ const handleExport = async () => {
 
     <!-- Pagination -->
     <div
-      v-if="pagination.totalPages > 1"
-      class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6"
+      class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8 pb-8"
     >
-      <div class="text-sm text-base-content/60 order-2 sm:order-1">
+      <!-- Left: Summary Text -->
+      <div class="text-sm text-gray-500 font-medium order-2 sm:order-1">
         แสดง {{ (page - 1) * limit + 1 }} -
         {{ Math.min(page * limit, pagination.total) }} จาก
         {{ pagination.total }}
       </div>
 
-      <div class="flex gap-1 order-1 sm:order-2">
+      <!-- Center: Navigation -->
+      <div class="flex items-center gap-2 order-1 sm:order-2">
         <button
-          class="btn btn-sm btn-circle btn-ghost"
+          class="btn btn-circle btn-sm btn-ghost text-gray-400 hover:bg-gray-100 hover:text-primary"
           :disabled="page === 1"
           @click="prevPage"
         >
-          ‹
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
         </button>
 
         <template v-for="pageNum in pagination.totalPages" :key="pageNum">
@@ -414,38 +428,75 @@ const handleExport = async () => {
               pageNum === pagination.totalPages ||
               (pageNum >= page - 1 && pageNum <= page + 1)
             "
-            class="btn btn-sm btn-circle"
-            :class="page === pageNum ? 'btn-primary' : 'btn-ghost'"
+            class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all duration-200"
+            :class="
+              page === pageNum
+                ? 'bg-[#007AFF] text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-100'
+            "
             @click="goToPage(pageNum)"
           >
             {{ pageNum }}
           </button>
           <span
             v-else-if="pageNum === page - 2 || pageNum === page + 2"
-            class="flex items-center px-2 text-base-content/40"
+            class="text-gray-300 text-xs"
           >
-            ···
+            •••
           </span>
         </template>
 
         <button
-          class="btn btn-sm btn-circle btn-ghost"
+          class="btn btn-circle btn-sm btn-ghost text-gray-400 hover:bg-gray-100 hover:text-primary"
           :disabled="page === pagination.totalPages"
           @click="nextPage"
         >
-          ›
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
         </button>
       </div>
 
-      <select
-        v-model="limit"
-        class="select select-sm select-bordered rounded-full order-3"
-      >
-        <option :value="10">10 / หน้า</option>
-        <option :value="25">25 / หน้า</option>
-        <option :value="50">50 / หน้า</option>
-        <option :value="100">100 / หน้า</option>
-      </select>
+      <!-- Right: Limit Selector -->
+      <div class="relative order-3">
+        <select
+          v-model="limit"
+          class="appearance-none bg-gray-50 border border-gray-200 rounded-full pl-4 pr-10 py-2 text-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer hover:bg-gray-100 transition-colors"
+        >
+          <option :value="10">10 / หน้า</option>
+          <option :value="25">25 / หน้า</option>
+          <option :value="50">50 / หน้า</option>
+          <option :value="100">100 / หน้า</option>
+        </select>
+        <div
+          class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500"
+        >
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+      </div>
     </div>
   </div>
 </template>

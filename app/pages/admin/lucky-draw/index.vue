@@ -280,6 +280,7 @@ const clearHistory = async () => {
     });
     winners.value = [];
     clearDisplayHistory(); // Reset the display and clear history
+    refreshTable(); // Refresh the table to show empty state
     showSuccess("ล้างประวัติเรียบร้อยแล้ว", "สำเร็จ!");
   } catch (error) {
     console.error("Error clearing history:", error);
@@ -390,7 +391,7 @@ const startDraw = () => {
   const message = {
     type: "start-draw",
     employeeId,
-    winner: selectedWinner,
+    winner: JSON.parse(JSON.stringify(selectedWinner)),
     duration: spinDuration,
     winnersList: JSON.parse(JSON.stringify(winners.value)),
   };
@@ -434,7 +435,7 @@ const startDraw = () => {
 
     const winnerMessage = {
       type: "show-winner",
-      winner: selectedWinner,
+      winner: JSON.parse(JSON.stringify(selectedWinner)),
       winnersList: JSON.parse(JSON.stringify(winners.value)),
     };
 
@@ -657,26 +658,7 @@ const resetDisplay = () => {
                 </svg>
                 Export Excel
               </button>
-              <button
-                @click="resetDisplay"
-                class="btn btn-sm btn-outline gap-2 font-normal"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                รีเซ็ตหน้าจอแสดงผล
-              </button>
+
               <button
                 v-if="winners.length > 0"
                 @click="clearHistory"
