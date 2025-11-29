@@ -18,6 +18,158 @@ const isPrizeLimited = ref(false);
 const allowRepeatWinners = ref(false);
 
 const { showError, showConfirm, showSuccess } = useSwal();
+const { exportToExcel } = useExcel();
+
+// Table State
+const page = ref(1);
+const limit = ref(10);
+const searchQuery = ref("");
+const sortBy = ref("wonAt");
+const sortOrder = ref<"asc" | "desc">("desc");
+
+// Debounce search
+const debouncedSearch = ref("");
+let searchTimeout: NodeJS.Timeout;
+
+watch(searchQuery, (newValue) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    debouncedSearch.value = newValue;
+    page.value = 1; // Reset to first page on search
+  }, 300);
+});
+
+// Fetch Winners for Table (Server-side Pagination)
+const { data: tableResponse, refresh: refreshTable } = await useFetch(
+  "/api/lucky-draw/history",
+  {
+    query: {
+      page,
+      limit,
+      search: debouncedSearch,
+      sortBy,
+      sortOrder,
+    },
+    watch: [page, limit, debouncedSearch, sortBy, sortOrder],
+  }
+);
+
+const tableWinners = computed(() => tableResponse.value?.data || []);
+const pagination = computed(() => {
+  const p = tableResponse.value?.pagination || {
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  };
+  return {
+    ...p,
+    start: (p.page - 1) * p.limit,
+    end: Math.min(p.page * p.limit, p.total),
+  };
+});
+
+// Computed: Table Winners with Rank
+const tableWinnersWithRank = computed(() => {
+  // If sorting by wonAt asc/desc, we can try to infer rank.
+  // But for simplicity, let's just show the row number relative to the whole dataset if possible,
+  // or just the index in the current page if that's what "Rank" means.
+  // The previous logic calculated rank based on "wonAt" time.
+  // If we want global rank, we might need to know the index relative to the start.
+
+  // Let's assume Rank = (Total - (Page-1)*Limit - Index) if sorted by wonAt desc (latest first)
+  // Or Rank = ((Page-1)*Limit + Index + 1) if sorted by wonAt asc (earliest first)
+
+  // Default sort is wonAt desc (latest winner first).
+  // So the first item on page 1 is the latest winner (Rank = Total).
+  // The last item on page 1 is Rank = Total - Limit + 1.
+
+  const total = pagination.value.total;
+  const startOffset = (page.value - 1) * limit.value;
+
+  return tableWinners.value.map((w: any, index: number) => {
+    let rank = 0;
+    if (sortBy.value === "wonAt" && sortOrder.value === "asc") {
+      rank = startOffset + index + 1;
+    } else if (sortBy.value === "wonAt" && sortOrder.value === "desc") {
+      rank = total - startOffset - index;
+    } else {
+      // If sorting by other fields, rank might not make sense chronologically,
+      // but we can still show a number.
+      rank = startOffset + index + 1;
+    }
+
+    return {
+      ...w,
+      winningRank: rank,
+    };
+  });
+});
+
+const paginatedWinners = computed(() => tableWinnersWithRank.value);
+
+// Methods
+const toggleSort = (field: string) => {
+  if (sortBy.value === field) {
+    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+  } else {
+    sortBy.value = field;
+    sortOrder.value = "asc";
+  }
+};
+
+const goToPage = (pageNum: number) => {
+  page.value = pageNum;
+};
+
+const nextPage = () => {
+  if (page.value < pagination.value.totalPages) {
+    page.value++;
+  }
+};
+
+const prevPage = () => {
+  if (page.value > 1) {
+    page.value--;
+  }
+};
+
+const handleExport = async () => {
+  try {
+    // Fetch all data for export
+    const exportResponse: any = await $fetch("/api/lucky-draw/history", {
+      query: {
+        limit: pagination.value.total || 10000, // Fetch all
+        sortBy: "wonAt",
+        sortOrder: "asc", // Export in chronological order usually? Or match current sort?
+        // Let's match current sort or default to chronological for "Rank" consistency
+      },
+    });
+
+    const allWinners = exportResponse.data || [];
+
+    if (allWinners.length === 0) {
+      showError("ไม่พบข้อมูลที่จะส่งออก", "ไม่สามารถส่งออกได้");
+      return;
+    }
+
+    const exportData = allWinners.map((winner: any, index: number) => ({
+      ลำดับ: index + 1, // Global rank if sorted by wonAt asc
+      ชื่อ_นามสกุล: `${winner.firstName} ${winner.lastName}`,
+      รหัสพนักงาน: winner.employeeId,
+      รางวัล: winner.prize || "-",
+      เวลาที่ได้รับรางวัล: new Date(winner.wonAt).toLocaleString("th-TH"),
+    }));
+
+    exportToExcel(
+      exportData,
+      `รายชื่อผู้โชคดี-${new Date().toISOString().split("T")[0]}`
+    );
+  } catch (error) {
+    console.error("Error exporting winners:", error);
+    showError("ไม่สามารถส่งออกข้อมูลได้", "เกิดข้อผิดพลาด");
+  }
+};
 
 // BroadcastChannel for syncing
 let broadcastChannel: BroadcastChannel | null = null;
@@ -195,7 +347,7 @@ const openDisplayWindow = () => {
 // Computed property for available candidates
 const availableCandidates = computed(() => {
   // 1. Filter by valid ID length (5 or 7 digits)
-  let candidates = allRegistrations.value.filter((reg) => {
+  let candidates = allRegistrations.value.filter((reg: any) => {
     const id = reg.employeeId?.toString().trim();
     return id && (id.length === 5 || id.length === 7);
   });
@@ -203,7 +355,7 @@ const availableCandidates = computed(() => {
   // 2. Filter out winners if repeats are not allowed
   if (!allowRepeatWinners.value) {
     candidates = candidates.filter(
-      (reg) => !winners.value.some((w) => w.id === reg.id)
+      (reg: any) => !winners.value.some((w) => w.id === reg.id)
     );
   }
 
@@ -233,11 +385,8 @@ const startDraw = () => {
   if (!selectedWinner) return;
 
   let employeeId = selectedWinner.employeeId.toString().trim();
-  if (employeeId.length <= 5) {
-    employeeId = employeeId.padStart(5, "0");
-  } else {
-    employeeId = employeeId.padStart(7, "0");
-  }
+  // Always pad to 7 digits as requested
+  employeeId = employeeId.padStart(7, "0");
 
   const message = {
     type: "start-draw",
@@ -296,12 +445,18 @@ const startDraw = () => {
       "lucky-draw-event",
       JSON.stringify({ ...winnerMessage, timestamp: Date.now() })
     );
+
+    // Refresh table
+    refreshTable();
   }, spinDuration);
 };
 
 const loadHistory = async () => {
   try {
-    const response: any = await $fetch("/api/lucky-draw/history");
+    // Fetch ALL winners for game logic (limit 10000)
+    const response: any = await $fetch("/api/lucky-draw/history", {
+      query: { limit: 10000 },
+    });
     if (response?.success && response?.data) {
       winners.value = response.data.map((w: any) => ({
         ...w,
@@ -401,7 +556,7 @@ const reset = () => {
               class="h-8 w-16 bg-gray-200 rounded animate-pulse mt-1"
             ></div>
             <h3 v-else class="text-2xl font-bold text-gray-800">
-              {{ winners.length }}
+              {{ pagination.total }}
             </h3>
           </div>
         </div>
@@ -433,7 +588,9 @@ const reset = () => {
             ></div>
             <h3 v-else class="text-2xl font-bold text-gray-800">
               {{
-                isPrizeLimited ? Math.max(0, totalPrizes - winners.length) : "∞"
+                isPrizeLimited
+                  ? Math.max(0, totalPrizes - pagination.total)
+                  : "∞"
               }}
             </h3>
           </div>
@@ -451,23 +608,116 @@ const reset = () => {
             class="p-6 border-b border-gray-100 flex justify-between items-center"
           >
             <h2 class="text-xl font-bold text-gray-800">รายชื่อผู้โชคดี</h2>
-            <button
-              v-if="winners.length > 0"
-              @click="clearHistory"
-              class="text-sm text-red-500 hover:text-red-700 font-medium"
-            >
-              ล้างประวัติ
-            </button>
+            <div class="flex gap-4 items-center">
+              <button
+                v-if="winners.length > 0"
+                @click="handleExport"
+                class="btn btn-sm bg-[#00C853] hover:bg-[#00B048] text-white border-none gap-2 font-normal"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Export Excel
+              </button>
+              <button
+                v-if="winners.length > 0"
+                @click="clearHistory"
+                class="btn btn-sm btn-ghost text-red-500 hover:bg-red-50 font-bold"
+              >
+                ล้างประวัติ
+              </button>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="p-4 border-b border-gray-100">
+            <div class="relative w-full">
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="ค้นหาชื่อ, รหัส, หรือรางวัล..."
+                class="input input-bordered w-full pl-10 bg-gray-50/50"
+              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
           </div>
 
           <div class="overflow-x-auto">
             <table class="table w-full">
               <thead>
-                <tr class="bg-gray-50 text-gray-600">
-                  <th class="w-16 text-center">ลำดับ</th>
-                  <th>ชื่อ-นามสกุล</th>
-                  <th>รหัสพนักงาน</th>
-                  <th>รางวัลที่ได้รับ</th>
+                <tr
+                  class="bg-gray-50/50 text-gray-700 border-b border-gray-100"
+                >
+                  <th
+                    class="w-24 text-center cursor-pointer hover:bg-gray-100 select-none py-4"
+                    @click="toggleSort('winningRank')"
+                  >
+                    <div
+                      class="flex items-center justify-center gap-1 font-bold"
+                    >
+                      ลำดับ
+                      <span v-if="sortBy === 'winningRank'" class="text-xs">
+                        {{ sortOrder === "asc" ? "↑" : "↓" }}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    class="cursor-pointer hover:bg-gray-100 select-none py-4"
+                    @click="toggleSort('firstName')"
+                  >
+                    <div class="flex items-center gap-1 font-bold">
+                      ชื่อ-นามสกุล
+                      <span v-if="sortBy === 'firstName'" class="text-xs">
+                        {{ sortOrder === "asc" ? "↑" : "↓" }}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    class="cursor-pointer hover:bg-gray-100 select-none py-4"
+                    @click="toggleSort('employeeId')"
+                  >
+                    <div class="flex items-center gap-1 font-bold">
+                      รหัสพนักงาน
+                      <span v-if="sortBy === 'employeeId'" class="text-xs">
+                        {{ sortOrder === "asc" ? "↑" : "↓" }}
+                      </span>
+                    </div>
+                  </th>
+                  <th
+                    class="cursor-pointer hover:bg-gray-100 select-none py-4"
+                    @click="toggleSort('prize')"
+                  >
+                    <div class="flex items-center gap-1 font-bold">
+                      รางวัลที่ได้รับ
+                      <span v-if="sortBy === 'prize'" class="text-xs">
+                        {{ sortOrder === "asc" ? "↑" : "↓" }}
+                      </span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -489,31 +739,31 @@ const reset = () => {
                   </tr>
                 </template>
                 <template v-else>
-                  <tr v-if="winners.length === 0">
+                  <tr v-if="paginatedWinners.length === 0">
                     <td colspan="4" class="text-center py-8 text-gray-400">
-                      ยังไม่มีผู้โชคดี
+                      {{
+                        searchQuery ? "ไม่พบข้อมูลที่ค้นหา" : "ยังไม่มีผู้โชคดี"
+                      }}
                     </td>
                   </tr>
                   <tr
-                    v-for="(winner, index) in winners"
-                    :key="index"
-                    class="hover:bg-gray-50 transition-colors"
+                    v-for="(winner, index) in paginatedWinners"
+                    :key="winner.id"
+                    class="hover:bg-gray-50 transition-colors border-b border-gray-50"
                   >
-                    <td class="text-center font-bold text-gray-500">
-                      {{ winners.length - index }}
+                    <td class="text-center font-bold text-gray-500 py-4">
+                      {{ winner.winningRank }}
                     </td>
-                    <td>
-                      <div class="font-bold text-gray-800">
+                    <td class="py-4">
+                      <div class="font-bold text-gray-800 text-base">
                         {{ winner.firstName }} {{ winner.lastName }}
                       </div>
-                      <div class="text-xs text-gray-500">
-                        {{ winner.department }}
-                      </div>
                     </td>
-                    <td>
-                      <span class="badge badge-ghost font-mono">{{
-                        winner.employeeId
-                      }}</span>
+                    <td class="py-4">
+                      <span
+                        class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-mono text-sm font-medium tracking-wide border border-gray-200"
+                        >{{ winner.employeeId }}</span
+                      >
                     </td>
                     <td class="text-sm text-gray-500">
                       <div
@@ -605,6 +855,93 @@ const reset = () => {
                 </template>
               </tbody>
             </table>
+          </div>
+
+          <!-- Pagination -->
+          <div
+            class="p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4"
+          >
+            <div class="text-sm text-gray-500 order-2 sm:order-1">
+              แสดง {{ pagination.start + 1 }} - {{ pagination.end }} จาก
+              {{ pagination.total }}
+            </div>
+
+            <div class="flex gap-1 order-1 sm:order-2">
+              <button
+                class="btn btn-sm btn-circle btn-ghost"
+                :disabled="page === 1"
+                @click="prevPage"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+
+              <template v-for="pageNum in pagination.totalPages" :key="pageNum">
+                <button
+                  v-if="
+                    pageNum === 1 ||
+                    pageNum === pagination.totalPages ||
+                    (pageNum >= page - 1 && pageNum <= page + 1)
+                  "
+                  class="btn btn-sm btn-circle"
+                  :class="
+                    page === pageNum ? 'btn-primary text-white' : 'btn-ghost'
+                  "
+                  @click="goToPage(pageNum)"
+                >
+                  {{ pageNum }}
+                </button>
+                <span
+                  v-else-if="pageNum === page - 2 || pageNum === page + 2"
+                  class="flex items-center px-2 text-gray-300"
+                >
+                  ···
+                </span>
+              </template>
+
+              <button
+                class="btn btn-sm btn-circle btn-ghost"
+                :disabled="page === pagination.totalPages"
+                @click="nextPage"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <select
+              v-model="limit"
+              class="select select-sm select-bordered rounded-full order-3"
+            >
+              <option :value="10">10 / หน้า</option>
+              <option :value="25">25 / หน้า</option>
+              <option :value="50">50 / หน้า</option>
+              <option :value="100">100 / หน้า</option>
+            </select>
           </div>
         </div>
       </div>

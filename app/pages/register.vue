@@ -63,31 +63,37 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
   <div
-    class="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] flex items-center justify-center p-4"
+    class="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden"
   >
-    <div class="card w-full max-w-md bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2
-          class="card-title text-2xl font-bold text-center justify-center mb-6"
-        >
-          ลงทะเบียน
-        </h2>
+    <!-- Decorative Background -->
+    <div
+      class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-indigo-50 to-transparent pointer-events-none"
+    ></div>
 
-        <form @submit="onSubmit" class="space-y-4">
+    <div
+      class="card w-full max-w-md bg-white shadow-xl border border-gray-100 z-10"
+    >
+      <div class="card-body p-8">
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-bold text-gray-900">ลงทะเบียน</h2>
+          <p class="text-gray-500 mt-2">กรอกข้อมูลเพื่อเข้าร่วมกิจกรรม</p>
+        </div>
+
+        <form @submit="onSubmit" class="space-y-5">
           <!-- First Name -->
           <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">ชื่อ</span>
+            <label class="label px-0">
+              <span class="label-text font-semibold text-gray-700">ชื่อ</span>
             </label>
             <input
               type="text"
               v-model="firstName"
               v-bind="firstNameProps"
-              placeholder="กรอกชื่อ"
-              class="input input-bordered w-full"
+              placeholder="กรอกชื่อจริง"
+              class="input input-bordered w-full bg-gray-50 focus:bg-white focus:border-indigo-500 transition-all"
               :class="{ 'input-error': errors.firstName }"
             />
-            <label class="label" v-if="errors.firstName">
+            <label class="label px-0" v-if="errors.firstName">
               <span class="label-text-alt text-error">{{
                 errors.firstName
               }}</span>
@@ -96,18 +102,20 @@ const onSubmit = handleSubmit(async (values) => {
 
           <!-- Last Name -->
           <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">นามสกุล</span>
+            <label class="label px-0">
+              <span class="label-text font-semibold text-gray-700"
+                >นามสกุล</span
+              >
             </label>
             <input
               type="text"
               v-model="lastName"
               v-bind="lastNameProps"
               placeholder="กรอกนามสกุล"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full bg-gray-50 focus:bg-white focus:border-indigo-500 transition-all"
               :class="{ 'input-error': errors.lastName }"
             />
-            <label class="label" v-if="errors.lastName">
+            <label class="label px-0" v-if="errors.lastName">
               <span class="label-text-alt text-error">{{
                 errors.lastName
               }}</span>
@@ -116,19 +124,21 @@ const onSubmit = handleSubmit(async (values) => {
 
           <!-- Employee ID -->
           <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium">รหัสพนักงาน</span>
+            <label class="label px-0">
+              <span class="label-text font-semibold text-gray-700"
+                >รหัสพนักงาน</span
+              >
             </label>
             <input
               type="text"
               v-model="employeeId"
               v-bind="employeeIdProps"
-              placeholder="รหัสพนักงาน"
+              placeholder="เช่น 1234567"
               maxlength="7"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full bg-gray-50 focus:bg-white focus:border-indigo-500 transition-all"
               :class="{ 'input-error': errors.employeeId }"
             />
-            <label class="label" v-if="errors.employeeId">
+            <label class="label px-0" v-if="errors.employeeId">
               <span class="label-text-alt text-error">{{
                 errors.employeeId
               }}</span>
@@ -136,7 +146,10 @@ const onSubmit = handleSubmit(async (values) => {
           </div>
 
           <!-- General Error -->
-          <div v-if="submitError" class="alert alert-error text-sm mt-4">
+          <div
+            v-if="submitError"
+            class="alert alert-error bg-red-50 text-red-600 border-red-100 text-sm mt-4"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="stroke-current shrink-0 h-6 w-6"
@@ -154,14 +167,14 @@ const onSubmit = handleSubmit(async (values) => {
           </div>
 
           <!-- Submit Button -->
-          <div class="card-actions justify-end mt-6">
+          <div class="card-actions justify-end mt-8">
             <button
               type="submit"
-              class="btn btn-primary w-full text-lg"
+              class="btn btn-primary w-full text-lg rounded-xl shadow-lg shadow-indigo-100"
               :disabled="isSubmitting"
             >
               <span v-if="isSubmitting" class="loading loading-spinner"></span>
-              {{ isSubmitting ? "กำลังบันทึก..." : "ลงทะเบียน" }}
+              {{ isSubmitting ? "กำลังบันทึก..." : "ยืนยันการลงทะเบียน" }}
             </button>
           </div>
         </form>

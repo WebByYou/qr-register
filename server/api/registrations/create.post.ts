@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { prisma } from "../../utils/prisma";
 
 const registrationSchema = z.object({
   firstName: z.string().min(1, "กรุณากรอกชื่อ"),

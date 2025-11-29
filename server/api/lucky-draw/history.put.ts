@@ -1,7 +1,4 @@
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-
-const prisma = new PrismaClient();
 
 const updateHistorySchema = z.object({
   id: z.number(),
@@ -23,7 +20,7 @@ export default defineEventHandler(async (event) => {
 
     const { id, prize } = result.data;
 
-    const updatedHistory = await prisma.luckyDrawHistory.update({
+    const updatedHistory = await prisma.winner.update({
       where: { id },
       data: { prize },
     });

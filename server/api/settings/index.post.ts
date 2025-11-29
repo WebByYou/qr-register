@@ -1,8 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { qrDisplayEmitter } from "../../utils/qr-display";
-
-const prisma = new PrismaClient();
 
 const settingsSchema = z.record(z.any());
 

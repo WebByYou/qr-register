@@ -1,7 +1,4 @@
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-
-const prisma = new PrismaClient();
 
 const historySchema = z.object({
   employeeId: z.string(),
@@ -26,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
     const data = result.data;
 
-    const savedRecord = await prisma.luckyDrawHistory.create({
+    const savedRecord = await prisma.winner.create({
       data: {
         employeeId: data.employeeId,
         firstName: data.firstName,

@@ -8,7 +8,7 @@ definePageMeta({
 const isSpinning = ref(false);
 const winner = ref<any>(null);
 const winnersList = ref<any[]>([]);
-const displayDigits = ref<string[]>(["0", "0", "0", "0", "0", "0"]);
+const displayDigits = ref<string[]>(["0", "0", "0", "0", "0", "0", "0"]);
 const connectionStatus = ref("Initializing...");
 const lastMessageType = ref("");
 const debugLogs = ref<string[]>([]);
@@ -116,7 +116,7 @@ const resetDisplay = () => {
   addLog("Resetting display");
   winner.value = null;
   isSpinning.value = false;
-  displayDigits.value = ["0", "0", "0", "0", "0", "0"];
+  displayDigits.value = ["0", "0", "0", "0", "0", "0", "0"];
 };
 
 const startAnimation = (

@@ -1,26 +1,61 @@
 <script setup lang="ts">
+import confetti from "canvas-confetti";
+
 const route = useRoute();
 const registrationId = computed(() => route.query.id);
+
+onMounted(() => {
+  // Fire confetti
+  const duration = 3 * 1000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+  const randomInRange = (min: number, max: number) => {
+    return Math.random() * (max - min) + min;
+  };
+
+  const interval: any = setInterval(function () {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+    });
+  }, 250);
+});
 </script>
 
 <template>
   <div
-    class="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2] p-4 overflow-hidden"
+    class="min-h-[100dvh] flex items-center justify-center bg-white p-4 relative overflow-hidden"
   >
+    <!-- Decorative Background -->
     <div
-      class="w-full max-w-md flex flex-col items-center justify-center p-6 md:p-10"
+      class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-green-50/50 via-white to-white pointer-events-none"
+    ></div>
+
+    <div
+      class="w-full max-w-md flex flex-col items-center justify-center p-8 relative z-10 text-center"
     >
-      <!-- Success Icon with Animation -->
-      <div class="mb-6 relative inline-block">
+      <!-- Success Icon -->
+      <div class="mb-8 relative inline-block">
         <div
-          class="absolute inset-0 bg-white/20 rounded-full animate-ping"
-        ></div>
-        <div
-          class="relative w-24 h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-white/30"
+          class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto animate-bounce-slow"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-12 w-12 text-white drop-shadow-md"
+            class="h-12 w-12 text-[#00C853]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -35,34 +70,42 @@ const registrationId = computed(() => route.query.id);
         </div>
       </div>
 
-      <h2
-        class="text-5xl font-black text-white mb-4 drop-shadow-lg tracking-tight text-center"
-      >
+      <h2 class="text-4xl font-bold text-gray-900 mb-4 tracking-tight">
         ลงทะเบียนสำเร็จ!
       </h2>
 
-      <p
-        class="text-white/90 text-xl mb-12 font-light tracking-wide text-center"
-      >
-        ขอบคุณสำหรับการลงทะเบียน
+      <p class="text-gray-500 mb-10 text-lg">
+        ขอบคุณสำหรับการลงทะเบียน<br />ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว
       </p>
 
       <!-- Registration ID Display -->
-      <div
-        class="mb-8 transform hover:scale-105 transition-transform duration-300 flex flex-col items-center"
-      >
+      <div class="mb-8 w-full">
         <div
-          class="text-white/80 text-sm font-bold uppercase tracking-[0.2em] mb-2 pl-[0.2em]"
+          class="text-gray-400 text-sm font-bold uppercase tracking-widest mb-4"
         >
-          ลำดับที่
+          ลำดับที่ของคุณ
         </div>
-        <div
-          class="text-7xl md:text-8xl lg:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 drop-shadow-2xl filter break-all text-center"
-          style="text-shadow: 0 4px 20px rgba(234, 179, 8, 0.5)"
-        >
+        <div class="text-8xl font-black text-[#00C853] tracking-tighter">
           {{ registrationId || "-" }}
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes bounce-slow {
+  0%,
+  100% {
+    transform: translateY(-5%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 2s infinite;
+}
+</style>

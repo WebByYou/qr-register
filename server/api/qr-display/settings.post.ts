@@ -1,8 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { qrDisplayEmitter } from "../../utils/qr-display";
 
-const prisma = new PrismaClient();
-
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);

@@ -1,3 +1,4 @@
+import { prisma } from "../../utils/prisma";
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const page = parseInt(query.page as string) || 1;
