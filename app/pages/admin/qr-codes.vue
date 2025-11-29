@@ -686,7 +686,7 @@ const copyDisplayUrl = async () => {
             <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
               <div class="form-control">
                 <div class="label pt-0 pb-1 justify-between">
-                  <span class="label-text font-bold text-lg">QR Code</span>
+                  <span class="label-text font-bold text-base">QR Code</span>
                   <div class="flex items-center gap-1">
                     <button
                       class="btn btn-circle btn-ghost btn-xs"
@@ -751,7 +751,7 @@ const copyDisplayUrl = async () => {
             <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
               <div class="form-control">
                 <div class="label pt-0 pb-1 justify-between">
-                  <span class="label-text font-bold text-lg"
+                  <span class="label-text font-bold text-base"
                     >หัวข้อ (Title)</span
                   >
                   <div class="flex items-center gap-1">
@@ -883,7 +883,7 @@ const copyDisplayUrl = async () => {
             <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
               <div class="form-control">
                 <div class="label pt-0 pb-1 justify-between">
-                  <span class="label-text font-bold text-lg"
+                  <span class="label-text font-bold text-base"
                     >คำบรรยาย (Subtitle)</span
                   >
                   <div class="flex items-center gap-1">
@@ -1016,7 +1016,7 @@ const copyDisplayUrl = async () => {
             <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
               <div class="form-control">
                 <div class="label cursor-pointer justify-between pt-0 pb-2">
-                  <span class="label-text font-bold text-lg"
+                  <span class="label-text font-bold text-base"
                     >ตัวนับ (Count)</span
                   >
                   <div class="flex items-center gap-1">
