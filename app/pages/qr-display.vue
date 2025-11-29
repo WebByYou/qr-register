@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import QRCode from "qrcode";
+import { useRegistration } from "../../composables/useRegistration";
 
+const {
+  count: registrationCount,
+  isConnected,
+  init,
+  onMessage,
+  removeListener,
+} = useRegistration();
+
+// Local settings state
 const settings = ref({
   backgroundImage: "",
   qrPosition: { x: 300, y: 150 },
@@ -28,10 +38,32 @@ const settings = ref({
 const registrationUrl = ref("");
 const qrCodeDataUrl = ref("");
 const isLoading = ref(true);
-const registrationCount = ref(0);
 
-// Subscribe to SSE stream
-let eventSource: EventSource | null = null;
+// Handle SSE messages from store
+const handleSSEMessage = (parsed: any) => {
+  if (parsed.type === "settings") {
+    const data = parsed.data;
+    // Ensure locked property exists
+    if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
+      data.titleStyle.locked = false;
+    if (data.subtitleStyle && typeof data.subtitleStyle.locked === "undefined")
+      data.subtitleStyle.locked = false;
+    if (data.countStyle && typeof data.countStyle.locked === "undefined")
+      data.countStyle.locked = false;
+    if (!data.qrStyle) {
+      data.qrStyle = {
+        locked: false,
+        border: false,
+        borderColor: "#ffffff",
+        borderWidth: 10,
+      };
+    }
+
+    if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
+      settings.value = data;
+    }
+  }
+};
 
 onMounted(async () => {
   const baseUrl = window.location.origin;
@@ -40,50 +72,9 @@ onMounted(async () => {
   await generateQRCode();
   isLoading.value = false;
 
-  if (typeof window !== "undefined") {
-    eventSource = new EventSource("/api/qr-display/stream");
-
-    eventSource.onmessage = (event) => {
-      try {
-        const parsed = JSON.parse(event.data);
-
-        if (parsed.type === "settings") {
-          const data = parsed.data;
-          // Ensure locked property exists
-          if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
-            data.titleStyle.locked = false;
-          if (
-            data.subtitleStyle &&
-            typeof data.subtitleStyle.locked === "undefined"
-          )
-            data.subtitleStyle.locked = false;
-          if (data.countStyle && typeof data.countStyle.locked === "undefined")
-            data.countStyle.locked = false;
-          if (!data.qrStyle) {
-            data.qrStyle = {
-              locked: false,
-              border: false,
-              borderColor: "#ffffff",
-              borderWidth: 10,
-            };
-          }
-
-          if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
-            settings.value = data;
-          }
-        } else if (parsed.type === "count") {
-          registrationCount.value = parsed.data;
-        }
-      } catch (e) {
-        console.error("Error parsing SSE data:", e);
-      }
-    };
-  }
-
-  // Initial fetch for count
-  if (settings.value.showCount) {
-    fetchCount();
-  }
+  // Initialize store
+  init();
+  onMessage(handleSSEMessage);
 
   // Preview Mode Logic
   if (isPreview.value) {
@@ -92,9 +83,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  if (eventSource) {
-    eventSource.close();
-  }
+  removeListener(handleSSEMessage);
   if (isPreview.value) {
     window.removeEventListener("message", handleMessage);
   }
@@ -214,25 +203,14 @@ const startDrag = (e: MouseEvent, type: string) => {
   document.addEventListener("mouseup", onMouseUp);
 };
 
-const fetchCount = async () => {
-  try {
-    const res: any = await $fetch("/api/registrations/count");
-    if (res?.success) {
-      registrationCount.value = res.count;
-    }
-  } catch (error) {
-    console.error("Error fetching count:", error);
-  }
-};
-
 // Watch for showCount changes to start/stop polling
 // Watch for showCount changes to fetch initial count
 watch(
   () => settings.value.showCount,
   (newVal) => {
-    if (newVal) {
-      fetchCount();
-    }
+    // We don't need to manually fetch count here anymore as the store handles it
+    // But if we want to force refresh when showing, we can call fetchCount from store
+    // For now, the store keeps it updated.
   }
 );
 
@@ -359,10 +337,11 @@ onMounted(() => {
     <div v-else class="fixed inset-0 flex items-center justify-center bg-black">
       <!-- 16:9 Aspect Ratio Container -->
       <div
+        v-if="settings"
         class="relative w-full aspect-video max-h-screen max-w-[177.78vh] shadow-2xl overflow-hidden"
         style="container-type: inline-size"
         :style="{
-          backgroundImage: settings.backgroundImage
+          backgroundImage: settings?.backgroundImage
             ? `url(${settings.backgroundImage})`
             : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           backgroundSize: 'cover',

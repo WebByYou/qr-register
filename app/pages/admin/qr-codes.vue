@@ -260,6 +260,22 @@ const copyUrl = async () => {
     alert("ไม่สามารถคัดลอกได้");
   }
 };
+const displayUrl = ref("");
+
+onMounted(() => {
+  if (typeof window !== "undefined") {
+    displayUrl.value = `${window.location.origin}/qr-display`;
+  }
+});
+
+const copyDisplayUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(displayUrl.value);
+    showSuccess("คัดลอกลิงก์หน้าจอแสดงผลสำเร็จ", "สำเร็จ!");
+  } catch (err) {
+    showError("ไม่สามารถคัดลอกได้", "ข้อผิดพลาด");
+  }
+};
 </script>
 
 <template>
@@ -278,102 +294,111 @@ const copyUrl = async () => {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- QR Code Preview -->
       <div class="card bg-base-100 border border-base-300">
-        <div class="card-body items-center">
-          <h3 class="card-title mb-4">ตัวอย่าง QR Code</h3>
+        <div class="card-body items-center text-center p-8">
+          <h3 class="font-bold text-lg mb-6">ตัวอย่าง QR Code</h3>
 
-          <div>
+          <div class="mb-6">
             <div
               v-if="isLoading"
-              class="w-64 h-64 bg-gray-200 animate-pulse rounded-lg"
+              class="w-64 h-64 bg-gray-200 animate-pulse rounded-lg mx-auto"
             ></div>
             <img
               v-else-if="qrCodeDataUrl"
               :src="qrCodeDataUrl"
               alt="QR Code"
-              class="w-full h-auto max-w-[300px]"
+              class="w-64 h-64 mx-auto"
             />
           </div>
 
-          <div class="mt-4 text-center">
-            <p class="text-sm text-base-content/60 mb-2">สแกนเพื่อลงทะเบียน</p>
-            <code class="text-xs bg-base-200 px-3 py-1 rounded">
-              {{ registrationUrl }}
-            </code>
-          </div>
-
-          <div class="flex gap-2 mt-6">
-            <button class="btn btn-primary btn-sm gap-2" @click="downloadQR">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              ดาวน์โหลด
-            </button>
-            <button class="btn btn-secondary btn-sm gap-2" @click="printQR">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                />
-              </svg>
-              พิมพ์
-            </button>
-            <button class="btn btn-ghost btn-sm gap-2" @click="copyUrl">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-              คัดลอก URL
-            </button>
-          </div>
-
-          <!-- Info -->
-          <div class="alert alert-info mt-6">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              class="stroke-current shrink-0 w-6 h-6"
+          <div class="w-full max-w-md">
+            <div class="text-gray-500 mb-2">สแกนเพื่อลงทะเบียน</div>
+            <div
+              class="bg-gray-100 px-4 py-3 rounded-lg text-gray-700 font-mono text-sm mb-8 break-all"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span class="text-sm">
-              QR Code นี้จะลิงก์ไปยังหน้าลงทะเบียน
-              สามารถพิมพ์หรือแชร์ให้ผู้ใช้สแกนได้เลย
-            </span>
+              {{ registrationUrl }}
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-4 mb-8">
+              <button
+                class="btn btn-primary px-6 text-white gap-2 min-w-[120px]"
+                @click="downloadQR"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                ดาวน์โหลด
+              </button>
+
+              <button
+                class="btn btn-success text-white px-6 gap-2 min-w-[120px]"
+                @click="printQR"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
+                </svg>
+                พิมพ์
+              </button>
+
+              <button class="btn btn-ghost gap-2" @click="copyUrl">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                คัดลอก URL
+              </button>
+            </div>
+
+            <div class="alert alert-info text-left">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                class="stroke-current shrink-0 w-6 h-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <span class="text-sm">
+                QR Code นี้จะลิงก์ไปยังหน้าลงทะเบียน
+                สามารถพิมพ์หรือแชร์ให้ผู้ใช้สแกนได้เลย
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -530,16 +555,112 @@ const copyUrl = async () => {
         <h3 class="card-title mb-4">จัดการหน้าจอแสดงผล (QR Display)</h3>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <!-- Visual Editor (Iframe) -->
-          <div
-            class="border rounded-xl overflow-hidden relative w-full aspect-video bg-gray-100 lg:col-span-3"
-          >
-            <iframe
-              ref="previewIframe"
-              src="/qr-display?preview=true"
-              class="w-full h-full border-0"
-              title="QR Display Preview"
-            ></iframe>
+          <!-- Combined Visual Editor & Controls -->
+          <div class="lg:col-span-3">
+            <div
+              class="border rounded-xl overflow-hidden bg-base-100 shadow-sm"
+            >
+              <!-- Iframe Preview -->
+              <div class="relative w-full aspect-video bg-gray-100">
+                <iframe
+                  ref="previewIframe"
+                  src="/qr-display?preview=true"
+                  class="w-full h-full border-0"
+                  title="QR Display Preview"
+                ></iframe>
+              </div>
+
+              <!-- Controls Section -->
+              <div
+                class="p-6 flex flex-col items-center justify-center border-t"
+              >
+                <div class="text-gray-500 mb-2">ลิงก์หน้าจอแสดงผล</div>
+
+                <a
+                  :href="displayUrl"
+                  target="_blank"
+                  class="bg-gray-100 px-6 py-3 rounded-lg text-gray-700 font-mono mb-6 hover:bg-gray-200 transition-colors flex items-center gap-2"
+                >
+                  {{ displayUrl }}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                </a>
+
+                <div class="flex flex-wrap justify-center gap-4">
+                  <button
+                    class="btn btn-primary px-6 text-white gap-2 min-w-[120px]"
+                    @click="downloadQR"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                    ดาวน์โหลด
+                  </button>
+
+                  <button
+                    class="btn btn-success text-white px-6 gap-2 min-w-[120px]"
+                    @click="printQR"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                      />
+                    </svg>
+                    พิมพ์
+                  </button>
+
+                  <button class="btn btn-ghost gap-2" @click="copyDisplayUrl">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                    คัดลอก URL
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Settings Form -->

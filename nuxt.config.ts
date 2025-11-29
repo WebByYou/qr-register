@@ -29,4 +29,11 @@ export default defineNuxtConfig({
       ],
     },
   },
+  routeRules: {
+    "/qr-display": {
+      headers: {
+        "X-Frame-Options": "SAMEORIGIN",
+      },
+    },
+  },
 });
