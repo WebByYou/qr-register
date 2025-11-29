@@ -170,7 +170,10 @@ const handleMessage = (data: any) => {
     winnersList.value = [];
     resetDisplay();
   } else if (type === "sync-state") {
-    addLog("State synced");
+    if (newWinnersList) {
+      winnersList.value = newWinnersList;
+    }
+    addLog("State synced: " + (newWinnersList ? newWinnersList.length : 0));
   }
 };
 let broadcastChannel: BroadcastChannel | null = null;

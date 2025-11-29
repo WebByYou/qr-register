@@ -240,6 +240,8 @@ const deleteWinner = async (id: number) => {
     
     winners.value = winners.value.filter(w => w.id !== id);
     
+    await nextTick();
+
     const syncMessage = {
       type: "sync-state",
       winnersList: JSON.parse(JSON.stringify(winners.value)),
@@ -288,6 +290,12 @@ onMounted(async () => {
         displayWindow?.postMessage(syncMessage, "*");
       }
     };
+    // Broadcast initial state on mount to ensure sync
+    const syncMessage = {
+      type: "sync-state",
+      winnersList: JSON.parse(JSON.stringify(winners.value)),
+    };
+    broadcastChannel.postMessage(syncMessage);
   } else {
     console.warn("BroadcastChannel not supported");
   }
@@ -350,8 +358,9 @@ const startDraw = () => {
   );
   setTimeout(async () => {
     isSpinning.value = false;
+    let savedWinner = null;
     try {
-      await $fetch("/api/lucky-draw/history", {
+      const response: any = await $fetch("/api/lucky-draw/history", {
         method: "POST",
         body: {
           employeeId: employeeId,
@@ -361,17 +370,24 @@ const startDraw = () => {
           wonAt: new Date(),
         },
       });
+      if (response?.data) {
+        savedWinner = response.data;
+      }
     } catch (error) {
       console.error("Error saving winner:", error);
     }
-    winners.value.unshift({
+
+    const winnerToAdd = savedWinner || {
       ...selectedWinner,
       employeeId: employeeId,
       wonAt: new Date(),
-    });
+    };
+
+    winners.value.unshift(winnerToAdd);
+    
     const winnerMessage = {
       type: "show-winner",
-      winner: JSON.parse(JSON.stringify({ ...selectedWinner, employeeId })),
+      winner: JSON.parse(JSON.stringify(winnerToAdd)),
       winnersList: JSON.parse(JSON.stringify(winners.value)),
     };
     broadcastChannel?.postMessage(winnerMessage);
