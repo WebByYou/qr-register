@@ -1,27 +1,20 @@
 <script setup lang="ts">
 const router = useRouter();
 const isDrawerOpen = ref(false);
-
 const { showConfirm } = useSwal();
-
 const handleLogout = async () => {
   const confirmed = await showConfirm(
     "คุณต้องการออกจากระบบหรือไม่?",
     "ยืนยันการออกจากระบบ"
   );
-
   if (!confirmed) return;
-
   const isAuth = useCookie("isAuth");
   isAuth.value = null;
   router.push("/admin/login");
 };
-
 const closeDrawer = () => {
   isDrawerOpen.value = false;
 };
-
-// Close drawer when route changes
 watch(
   () => router.currentRoute.value.path,
   () => {
@@ -29,12 +22,10 @@ watch(
   }
 );
 </script>
-
 <template>
   <div
     class="h-screen overflow-hidden bg-base-200 flex flex-col lg:flex-row font-sans lg:p-4 lg:gap-4"
   >
-    <!-- Mobile Header -->
     <div
       class="lg:hidden bg-base-100 p-4 flex items-center justify-between shadow-sm sticky top-0 z-40"
     >
@@ -79,15 +70,11 @@ watch(
         </svg>
       </button>
     </div>
-
-    <!-- Drawer Overlay (Mobile) -->
     <div
       v-if="isDrawerOpen"
       @click="closeDrawer"
       class="fixed inset-0 bg-black/50 z-40 lg:hidden"
     ></div>
-
-    <!-- Sidebar -->
     <aside
       :class="[
         'bg-base-100 flex flex-col shadow-lg transition-transform duration-300 z-50',
@@ -96,7 +83,6 @@ watch(
         isDrawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       ]"
     >
-      <!-- Close Button (Mobile) -->
       <button
         @click="closeDrawer"
         class="lg:hidden absolute top-4 right-4 btn btn-ghost btn-sm btn-circle"
@@ -116,10 +102,7 @@ watch(
           />
         </svg>
       </button>
-
-      <!-- Header Section -->
       <div class="p-6 space-y-6">
-        <!-- Logo -->
         <div class="flex items-center gap-3">
           <div class="bg-primary text-primary-content p-2 rounded-xl shadow-sm">
             <svg
@@ -142,15 +125,12 @@ watch(
           </h1>
         </div>
       </div>
-
-      <!-- Menu -->
       <nav class="flex-1 px-3 overflow-y-auto space-y-1">
         <div
           class="px-3 py-2 text-[11px] font-bold text-base-content/40 uppercase tracking-wider"
         >
           Menu
         </div>
-
         <NuxtLink
           to="/admin/lucky-draw"
           active-class="bg-primary/10 text-primary"
@@ -175,7 +155,6 @@ watch(
           </svg>
           สุ่มรางวัล
         </NuxtLink>
-
         <NuxtLink
           to="/admin/registrations"
           active-class="bg-primary/10 text-primary"
@@ -200,7 +179,6 @@ watch(
           </svg>
           รายชื่อผู้ลงทะเบียน
         </NuxtLink>
-
         <NuxtLink
           to="/admin/qr-codes"
           active-class="bg-primary/10 text-primary"
@@ -225,7 +203,6 @@ watch(
           </svg>
           จัดการ QR Code
         </NuxtLink>
-
         <NuxtLink
           to="/admin/settings"
           active-class="bg-primary/10 text-primary"
@@ -257,8 +234,6 @@ watch(
           เปลี่ยนรหัสผ่าน
         </NuxtLink>
       </nav>
-
-      <!-- Bottom Actions -->
       <div class="p-4 border-t border-base-200 space-y-2">
         <button
           @click="handleLogout"
@@ -282,8 +257,6 @@ watch(
         </button>
       </div>
     </aside>
-
-    <!-- Main Content -->
     <main
       class="flex-1 bg-base-100 lg:rounded-2xl lg:shadow-lg p-4 sm:p-6 lg:p-8 overflow-y-auto"
     >

@@ -1,11 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { qrDisplayEmitter } from "../../utils/qr-display";
-
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
-
-    // Prepare settings to save
     const settingsToSave = [
       { key: "backgroundImage", value: body.backgroundImage || "" },
       {
@@ -60,8 +57,6 @@ export default defineEventHandler(async (event) => {
       { key: "showTitle", value: String(body.showTitle ?? true) },
       { key: "showSubtitle", value: String(body.showSubtitle ?? true) },
     ];
-
-    // Save each setting
     await Promise.all(
       settingsToSave.map((setting) =>
         prisma.systemSetting.upsert({
@@ -71,7 +66,6 @@ export default defineEventHandler(async (event) => {
         })
       )
     );
-
     const settings = settingsToSave.reduce((acc, curr) => {
       const jsonFields = [
         "qrPosition",
@@ -86,18 +80,13 @@ export default defineEventHandler(async (event) => {
       acc[curr.key] = jsonFields.includes(curr.key)
         ? JSON.parse(curr.value)
         : curr.value;
-      // Convert qrSize back to number for response
       if (curr.key === "qrSize") acc[curr.key] = Number(curr.value);
-      // Convert booleans back for response
       if (["showCount", "showTitle", "showSubtitle"].includes(curr.key)) {
         acc[curr.key] = curr.value === "true";
       }
       return acc;
     }, {} as any);
-
-    // Emit update event
     qrDisplayEmitter.emit("update", { type: "settings", data: settings });
-
     return {
       success: true,
       message: "Settings saved successfully",

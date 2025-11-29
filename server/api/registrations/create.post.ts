@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { prisma } from "../../utils/prisma";
 import { qrDisplayEmitter } from "../../utils/qr-display";
-
 const registrationSchema = z.object({
   firstName: z.string().min(1, "กรุณากรอกชื่อ"),
   lastName: z.string().min(1, "กรุณากรอกนามสกุล"),
@@ -10,20 +9,16 @@ const registrationSchema = z.object({
     .max(7, "รหัสพนักงานต้องไม่เกิน 7 หลัก")
     .regex(/^\d+$/, "รหัสพนักงานต้องเป็นตัวเลขเท่านั้น"),
 });
-
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const result = registrationSchema.safeParse(body);
-
   if (!result.success) {
     throw createError({
       statusCode: 400,
       statusMessage: result.error.issues[0].message,
     });
   }
-
   const { firstName, lastName, employeeId } = result.data;
-
   try {
     const registration = await prisma.registration.create({
       data: {
@@ -32,11 +27,8 @@ export default defineEventHandler(async (event) => {
         employeeId,
       },
     });
-
-    // Emit update event for count
     const count = await prisma.registration.count();
     qrDisplayEmitter.emit("update", { type: "count", data: count });
-
     return registration;
   } catch (error: any) {
     if (error.code === "P2002") {

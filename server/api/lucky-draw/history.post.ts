@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 const historySchema = z.object({
   employeeId: z.string(),
   firstName: z.string(),
@@ -8,21 +7,17 @@ const historySchema = z.object({
   prize: z.string().optional(),
   wonAt: z.string().or(z.date()).optional(),
 });
-
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
     const result = historySchema.safeParse(body);
-
     if (!result.success) {
       throw createError({
         statusCode: 400,
         statusMessage: "Invalid data format",
       });
     }
-
     const data = result.data;
-
     const savedRecord = await prisma.winner.create({
       data: {
         employeeId: data.employeeId,
@@ -33,7 +28,6 @@ export default defineEventHandler(async (event) => {
         wonAt: data.wonAt ? new Date(data.wonAt) : new Date(),
       },
     });
-
     return {
       success: true,
       data: savedRecord,

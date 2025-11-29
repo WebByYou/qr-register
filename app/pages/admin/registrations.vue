@@ -1,34 +1,26 @@
 <script setup lang="ts">
 import { useRegistration } from "~/composables/useRegistration";
-
 definePageMeta({
   layout: "admin",
 });
-
 const { count: registrationCount, init: initRegistration } = useRegistration();
-
 onMounted(() => {
   initRegistration();
 });
-
 const page = ref(1);
 const limit = ref(10);
 const searchQuery = ref("");
 const sortBy = ref("createdAt");
 const sortOrder = ref<"asc" | "desc">("desc");
-
-// Debounce search
 const debouncedSearch = ref("");
 let searchTimeout: NodeJS.Timeout;
-
 watch(searchQuery, (newValue) => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     debouncedSearch.value = newValue;
-    page.value = 1; // Reset to first page on search
+    page.value = 1; 
   }, 300);
 });
-
 const { data: response, refresh } = await useFetch("/api/registrations", {
   query: {
     page,
@@ -39,12 +31,9 @@ const { data: response, refresh } = await useFetch("/api/registrations", {
   },
   watch: [page, limit, debouncedSearch, sortBy, sortOrder],
 });
-
-// Watch for real-time updates
 watch(registrationCount, () => {
   refresh();
 });
-
 const registrations = computed(() => response.value?.data || []);
 const pagination = computed(
   () =>
@@ -55,7 +44,6 @@ const pagination = computed(
       totalPages: 0,
     }
 );
-
 const toggleSort = (field: string) => {
   if (sortBy.value === field) {
     sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
@@ -64,13 +52,10 @@ const toggleSort = (field: string) => {
     sortOrder.value = "asc";
   }
 };
-
 const { showConfirm, showError, showPasswordConfirm, showSuccess } = useSwal();
-
 const deleteRegistration = async (id: number) => {
   const reg = registrations.value.find((r: any) => r.id === id);
   if (!reg) return;
-
   const confirmed = await showConfirm(
     `<div class="text-lg font-bold mb-1">${reg.firstName} ${reg.lastName}</div><div class="text-base text-gray-500">รหัสพนักงาน: ${reg.employeeId}</div>`,
     "ยืนยันการลบรายการ",
@@ -80,9 +65,7 @@ const deleteRegistration = async (id: number) => {
       isHtml: true,
     }
   );
-
   if (!confirmed) return;
-
   try {
     await $fetch(`/api/registrations/${id}`, {
       method: "DELETE",
@@ -92,30 +75,22 @@ const deleteRegistration = async (id: number) => {
     showError("กรุณาลองใหม่อีกครั้ง", "เกิดข้อผิดพลาดในการลบข้อมูล");
   }
 };
-
 const clearAllRegistrations = async () => {
-  // Step 1: First confirmation
   const firstConfirm = await showConfirm(
     "การดำเนินการนี้จะลบข้อมูลการลงทะเบียนทั้งหมด และไม่สามารถกู้คืนได้",
     "คุณแน่ใจหรือไม่?"
   );
-
   if (!firstConfirm) return;
-
-  // Step 2: Password confirmation
   const password = await showPasswordConfirm(
     "กรุณากรอกรหัสผ่าน Admin เพื่อยืนยันการลบข้อมูลทั้งหมด",
     "ยืนยันด้วยรหัสผ่าน"
   );
-
   if (!password) return;
-
   try {
     const result = await $fetch("/api/registrations/clear", {
       method: "POST",
       body: { password },
     });
-
     await showSuccess(
       `ลบข้อมูลทั้งหมด ${result.count} รายการเรียบร้อยแล้ว`,
       "ลบข้อมูลสำเร็จ"
@@ -129,40 +104,31 @@ const clearAllRegistrations = async () => {
     }
   }
 };
-
 const goToPage = (pageNum: number) => {
   page.value = pageNum;
 };
-
 const nextPage = () => {
   if (page.value < pagination.value.totalPages) {
     page.value++;
   }
 };
-
 const prevPage = () => {
   if (page.value > 1) {
     page.value--;
   }
 };
-
 const { exportToExcel } = useExcel();
-
 const handleExport = async () => {
   try {
-    // Fetch all data for export
     const response: any = await $fetch("/api/registrations", {
       query: {
-        limit: pagination.value.total || 10000, // Fetch all records
+        limit: pagination.value.total || 10000, 
         sortBy: sortBy.value,
         sortOrder: sortOrder.value,
       },
     });
-
     const allData = response.data || [];
-
     if (allData.length === 0) return;
-
     const exportData = allData.map((reg: any, index: number) => {
       return {
         ลำดับ: reg.id,
@@ -171,7 +137,6 @@ const handleExport = async () => {
         วันที่ลงทะเบียน: new Date(reg.createdAt).toLocaleString("th-TH"),
       };
     });
-
     exportToExcel(
       exportData,
       `รายชื่อผู้ลงทะเบียนทั้งหมด-${new Date().toISOString().split("T")[0]}`
@@ -182,10 +147,8 @@ const handleExport = async () => {
   }
 };
 </script>
-
 <template>
   <div>
-    <!-- Header -->
     <div
       class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6"
     >
@@ -240,8 +203,6 @@ const handleExport = async () => {
         </button>
       </div>
     </div>
-
-    <!-- Search Bar -->
     <div class="mb-4">
       <div class="relative">
         <input
@@ -266,8 +227,6 @@ const handleExport = async () => {
         </svg>
       </div>
     </div>
-
-    <!-- Table -->
     <div class="bg-base-100 rounded-xl overflow-x-auto border border-base-300">
       <table class="table table-sm">
         <thead class="bg-base-200/50">
@@ -386,19 +345,14 @@ const handleExport = async () => {
         </tbody>
       </table>
     </div>
-
-    <!-- Pagination -->
     <div
       class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8 pb-8"
     >
-      <!-- Left: Summary Text -->
       <div class="text-sm text-gray-500 font-medium order-2 sm:order-1">
         แสดง {{ (page - 1) * limit + 1 }} -
         {{ Math.min(page * limit, pagination.total) }} จาก
         {{ pagination.total }}
       </div>
-
-      <!-- Center: Navigation -->
       <div class="flex items-center gap-2 order-1 sm:order-2">
         <button
           class="btn btn-circle btn-sm btn-ghost text-gray-400 hover:bg-gray-100 hover:text-primary"
@@ -420,7 +374,6 @@ const handleExport = async () => {
             />
           </svg>
         </button>
-
         <template v-for="pageNum in pagination.totalPages" :key="pageNum">
           <button
             v-if="
@@ -445,7 +398,6 @@ const handleExport = async () => {
             •••
           </span>
         </template>
-
         <button
           class="btn btn-circle btn-sm btn-ghost text-gray-400 hover:bg-gray-100 hover:text-primary"
           :disabled="page === pagination.totalPages"
@@ -467,8 +419,6 @@ const handleExport = async () => {
           </svg>
         </button>
       </div>
-
-      <!-- Right: Limit Selector -->
       <div class="relative order-3">
         <select
           v-model="limit"

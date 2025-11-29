@@ -1,12 +1,8 @@
 import { qrDisplayEmitter } from "../../utils/qr-display";
-
 export default defineEventHandler(async (event) => {
   try {
     await prisma.winner.deleteMany({});
-
-    // Emit reset event to display
     qrDisplayEmitter.emit("update", { type: "clear-history" });
-
     return {
       success: true,
       message: "History cleared successfully",

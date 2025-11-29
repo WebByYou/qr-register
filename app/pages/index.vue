@@ -3,21 +3,17 @@ definePageMeta({
   layout: "default",
 });
 </script>
-
 <template>
   <div
     class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 relative overflow-hidden"
   >
-    <!-- Decorative Background Blob -->
     <div
       class="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-100/50 rounded-full blur-3xl pointer-events-none"
     ></div>
     <div
       class="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-purple-100/50 rounded-full blur-3xl pointer-events-none"
     ></div>
-
     <div class="max-w-4xl w-full grid md:grid-cols-2 gap-12 items-center z-10">
-      <!-- Text Content -->
       <div class="text-center md:text-left space-y-6">
         <div
           class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-sm font-medium"
@@ -71,8 +67,6 @@ definePageMeta({
           </NuxtLink>
         </div>
       </div>
-
-      <!-- Illustration / Visual -->
       <div class="relative hidden md:block">
         <div
           class="absolute inset-0 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-3xl rotate-3 opacity-10 blur-lg"
@@ -120,7 +114,5 @@ definePageMeta({
     </div>
   </div>
 </template>
-
 <style scoped>
-/* Add any specific custom styles if needed, but Tailwind covers most */
 </style>

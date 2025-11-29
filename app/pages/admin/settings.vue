@@ -2,14 +2,11 @@
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import * as z from "zod";
-
 definePageMeta({
   layout: "admin",
 });
-
 const { showSuccess, showError } = useSwal();
 const isLoading = ref(false);
-
 const validationSchema = toTypedSchema(
   z
     .object({
@@ -24,19 +21,15 @@ const validationSchema = toTypedSchema(
       path: ["confirmPassword"],
     })
 );
-
 const { handleSubmit, errors, defineField, resetForm } = useForm({
   validationSchema,
 });
-
 const [currentPassword, currentPasswordProps] = defineField("currentPassword");
 const [newPassword, newPasswordProps] = defineField("newPassword");
 const [confirmPassword, confirmPasswordProps] = defineField("confirmPassword");
-
 const showCurrentPassword = ref(false);
 const showNewPassword = ref(false);
 const showConfirmPassword = ref(false);
-
 const onSubmit = handleSubmit(async (values) => {
   isLoading.value = true;
   try {
@@ -47,7 +40,6 @@ const onSubmit = handleSubmit(async (values) => {
         newPassword: values.newPassword,
       },
     });
-
     showSuccess("เปลี่ยนรหัสผ่านสำเร็จ", "สำเร็จ!");
     resetForm();
   } catch (error: any) {
@@ -61,13 +53,10 @@ const onSubmit = handleSubmit(async (values) => {
   }
 });
 </script>
-
 <template>
   <div class="max-w-md mx-auto mt-10">
     <h2 class="text-2xl font-bold mb-6">เปลี่ยนรหัสผ่าน</h2>
-
     <form @submit.prevent="onSubmit" class="space-y-4">
-      <!-- Current Password -->
       <div class="form-control w-full">
         <label class="label">
           <span class="label-text font-semibold">รหัสผ่านปัจจุบัน</span>
@@ -129,8 +118,6 @@ const onSubmit = handleSubmit(async (values) => {
           }}</span>
         </label>
       </div>
-
-      <!-- New Password -->
       <div class="form-control w-full">
         <label class="label">
           <span class="label-text font-semibold">รหัสผ่านใหม่</span>
@@ -192,8 +179,6 @@ const onSubmit = handleSubmit(async (values) => {
           }}</span>
         </label>
       </div>
-
-      <!-- Confirm New Password -->
       <div class="form-control w-full">
         <label class="label">
           <span class="label-text font-semibold">ยืนยันรหัสผ่านใหม่</span>
@@ -255,7 +240,6 @@ const onSubmit = handleSubmit(async (values) => {
           }}</span>
         </label>
       </div>
-
       <div class="mt-6">
         <button
           type="submit"

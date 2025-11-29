@@ -2,9 +2,7 @@
 definePageMeta({
   layout: "admin",
 });
-
 const { count: totalRegistrations, init: initRegistration } = useRegistration();
-
 const isSpinning = ref(false);
 const winners = ref<any[]>([]);
 const spinDuration = 5000;
@@ -12,30 +10,22 @@ const totalPrizes = ref(10);
 const isPrizeLimited = ref(false);
 const allowRepeatWinners = ref(false);
 const allRegistrations = ref<any[]>([]);
-
 const { showError, showConfirm, showSuccess } = useSwal();
 const { exportToExcel } = useExcel();
-
-// Table State
 const page = ref(1);
 const limit = ref(10);
 const searchQuery = ref("");
 const sortBy = ref("wonAt");
 const sortOrder = ref<"asc" | "desc">("desc");
-
-// Debounce search
 const debouncedSearch = ref("");
 let searchTimeout: NodeJS.Timeout;
-
 watch(searchQuery, (newValue) => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     debouncedSearch.value = newValue;
-    page.value = 1; // Reset to first page on search
+    page.value = 1; 
   }, 300);
 });
-
-// Fetch Winners for Table (Server-side Pagination)
 const { data: tableResponse, refresh: refreshTable } = await useFetch(
   "/api/lucky-draw/history",
   {
@@ -49,7 +39,6 @@ const { data: tableResponse, refresh: refreshTable } = await useFetch(
     watch: [page, limit, debouncedSearch, sortBy, sortOrder],
   }
 );
-
 const tableWinners = computed(() => tableResponse.value?.data || []);
 const pagination = computed(() => {
   const p = tableResponse.value?.pagination || {
@@ -64,25 +53,9 @@ const pagination = computed(() => {
     end: Math.min(p.page * p.limit, p.total),
   };
 });
-
-// Computed: Table Winners with Rank
 const tableWinnersWithRank = computed(() => {
-  // If sorting by wonAt asc/desc, we can try to infer rank.
-  // But for simplicity, let's just show the row number relative to the whole dataset if possible,
-  // or just the index in the current page if that's what "Rank" means.
-  // The previous logic calculated rank based on "wonAt" time.
-  // If we want global rank, we might need to know the index relative to the start.
-
-  // Let's assume Rank = (Total - (Page-1)*Limit - Index) if sorted by wonAt desc (latest first)
-  // Or Rank = ((Page-1)*Limit + Index + 1) if sorted by wonAt asc (earliest first)
-
-  // Default sort is wonAt desc (latest winner first).
-  // So the first item on page 1 is the latest winner (Rank = Total).
-  // The last item on page 1 is Rank = Total - Limit + 1.
-
   const total = pagination.value.total;
   const startOffset = (page.value - 1) * limit.value;
-
   return tableWinners.value.map((w: any, index: number) => {
     let rank = 0;
     if (sortBy.value === "wonAt" && sortOrder.value === "asc") {
@@ -90,21 +63,15 @@ const tableWinnersWithRank = computed(() => {
     } else if (sortBy.value === "wonAt" && sortOrder.value === "desc") {
       rank = total - startOffset - index;
     } else {
-      // If sorting by other fields, rank might not make sense chronologically,
-      // but we can still show a number.
       rank = startOffset + index + 1;
     }
-
     return {
       ...w,
       winningRank: rank,
     };
   });
 });
-
 const paginatedWinners = computed(() => tableWinnersWithRank.value);
-
-// Methods
 const toggleSort = (field: string) => {
   if (sortBy.value === field) {
     sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
@@ -113,50 +80,40 @@ const toggleSort = (field: string) => {
     sortOrder.value = "asc";
   }
 };
-
 const goToPage = (pageNum: number) => {
   page.value = pageNum;
 };
-
 const nextPage = () => {
   if (page.value < pagination.value.totalPages) {
     page.value++;
   }
 };
-
 const prevPage = () => {
   if (page.value > 1) {
     page.value--;
   }
 };
-
 const handleExport = async () => {
   try {
-    // Fetch all data for export
     const exportResponse: any = await $fetch("/api/lucky-draw/history", {
       query: {
-        limit: pagination.value.total || 10000, // Fetch all
+        limit: pagination.value.total || 10000, 
         sortBy: "wonAt",
-        sortOrder: "asc", // Export in chronological order usually? Or match current sort?
-        // Let's match current sort or default to chronological for "Rank" consistency
+        sortOrder: "asc", 
       },
     });
-
     const allWinners = exportResponse.data || [];
-
     if (allWinners.length === 0) {
       showError("ไม่พบข้อมูลที่จะส่งออก", "ไม่สามารถส่งออกได้");
       return;
     }
-
     const exportData = allWinners.map((winner: any, index: number) => ({
-      ลำดับ: index + 1, // Global rank if sorted by wonAt asc
+      ลำดับ: index + 1, 
       ชื่อ_นามสกุล: `${winner.firstName} ${winner.lastName}`,
       รหัสพนักงาน: winner.employeeId,
       รางวัล: winner.prize || "-",
       เวลาที่ได้รับรางวัล: new Date(winner.wonAt).toLocaleString("th-TH"),
     }));
-
     exportToExcel(
       exportData,
       `รายชื่อผู้โชคดี-${new Date().toISOString().split("T")[0]}`
@@ -166,46 +123,32 @@ const handleExport = async () => {
     showError("ไม่สามารถส่งออกข้อมูลได้", "เกิดข้อผิดพลาด");
   }
 };
-
-// BroadcastChannel for syncing
 let broadcastChannel: BroadcastChannel | null = null;
 let displayWindow: Window | null = null;
 const displayUrl = ref("");
-
 const settings = ref({
   title: "",
   subtitle: "",
   waitText: "",
 });
-
-// Inline editing state
 const editingField = ref<string | null>(null);
 const tempValue = ref("");
-
 const startEdit = (field: string, value: string) => {
   editingField.value = field;
   tempValue.value = value;
 };
-
 const cancelEdit = () => {
   editingField.value = null;
   tempValue.value = "";
 };
-
 const isSaving = ref(false);
-
 const saveEdit = async () => {
   if (!editingField.value || isSaving.value) return;
-
   const field = editingField.value;
   const value = tempValue.value;
-
   isSaving.value = true;
-
-  // Optimistic update
   const originalValue = (settings.value as any)[field];
   (settings.value as any)[field] = value;
-
   try {
     await $fetch("/api/settings", {
       method: "POST",
@@ -216,31 +159,25 @@ const saveEdit = async () => {
   } catch (error) {
     console.error("Error saving settings:", error);
     showError("บันทึกการตั้งค่าไม่สำเร็จ", "ข้อผิดพลาด");
-    // Revert on error
     (settings.value as any)[field] = originalValue;
   } finally {
     isSaving.value = false;
   }
 };
-
 const editingWinnerId = ref<number | null>(null);
 const tempPrizeValue = ref("");
 const isSavingPrize = ref(false);
-
 const startEditPrize = (winner: any) => {
   editingWinnerId.value = winner.id;
   tempPrizeValue.value = winner.prize || "";
 };
-
 const cancelEditPrize = () => {
   editingWinnerId.value = null;
   tempPrizeValue.value = "";
 };
-
 const savePrize = async (winner: any) => {
   if (isSavingPrize.value) return;
   isSavingPrize.value = true;
-
   try {
     await $fetch("/api/lucky-draw/history", {
       method: "PUT",
@@ -249,8 +186,6 @@ const savePrize = async (winner: any) => {
         prize: tempPrizeValue.value,
       },
     });
-
-    // Update local state
     winner.prize = tempPrizeValue.value;
     editingWinnerId.value = null;
     tempPrizeValue.value = "";
@@ -261,7 +196,6 @@ const savePrize = async (winner: any) => {
     isSavingPrize.value = false;
   }
 };
-
 const clearHistory = async () => {
   const confirmed = await showConfirm(
     "คุณแน่ใจหรือไม่ที่จะล้างประวัติผู้โชคดีทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้",
@@ -271,23 +205,20 @@ const clearHistory = async () => {
       confirmButtonColor: "#d33",
     }
   );
-
   if (!confirmed) return;
-
   try {
     await $fetch("/api/lucky-draw/history", {
       method: "DELETE",
     });
     winners.value = [];
-    clearDisplayHistory(); // Reset the display and clear history
-    refreshTable(); // Refresh the table to show empty state
+    clearDisplayHistory(); 
+    refreshTable(); 
     showSuccess("ล้างประวัติเรียบร้อยแล้ว", "สำเร็จ!");
   } catch (error) {
     console.error("Error clearing history:", error);
     showError("ล้างประวัติไม่สำเร็จ", "เกิดข้อผิดพลาด");
   }
 };
-
 const loadSettings = async () => {
   try {
     const response: any = await $fetch("/api/qr-display/settings");
@@ -301,17 +232,13 @@ const loadSettings = async () => {
     console.error("Error loading settings:", error);
   }
 };
-
 const isLoading = ref(true);
-
 onMounted(async () => {
   await Promise.all([loadSettings(), loadHistory(), loadRegistrations()]);
   initRegistration();
-
   isLoading.value = false;
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
     broadcastChannel = new BroadcastChannel("lucky-draw-channel");
-
     broadcastChannel.onmessage = (event) => {
       if (event.data.type === "display-ready") {
         const syncMessage = {
@@ -327,67 +254,49 @@ onMounted(async () => {
   }
   displayUrl.value = window.location.origin + "/admin/lucky-draw/display";
 });
-
 onUnmounted(() => {
   broadcastChannel?.close();
 });
-
 const openDisplayWindow = () => {
   const displayUrl = window.location.origin + "/admin/lucky-draw/display";
   const features =
     "width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes,popup=yes";
   displayWindow = window.open(displayUrl, "LuckyDrawDisplay", features);
-
   if (displayWindow) {
   } else {
     console.error("Failed to open display window. Check popup blocker.");
   }
 };
-
-// Computed property for available candidates
 const availableCandidates = computed(() => {
-  // 1. Filter by valid ID length (5 or 7 digits)
   let candidates = allRegistrations.value.filter((reg: any) => {
     const id = reg.employeeId?.toString().trim();
     return id && (id.length === 5 || id.length === 7);
   });
-
-  // 2. Filter out winners if repeats are not allowed
   if (!allowRepeatWinners.value) {
     candidates = candidates.filter(
       (reg: any) => !winners.value.some((w) => w.id === reg.id)
     );
   }
-
   return candidates;
 });
-
 const startDraw = () => {
   if (isSpinning.value) return;
-
   if (isPrizeLimited.value && winners.value.length >= totalPrizes.value) {
     showError("ครบจำนวนรางวัลที่กำหนดแล้ว!", "แจ้งเตือน");
     return;
   }
-
   if (availableCandidates.value.length === 0) {
     showError("ไม่พบผู้มีสิทธิ์ลุ้นรางวัล (หรือรางวัลหมดแล้ว)!", "แจ้งเตือน");
     return;
   }
-
   isSpinning.value = true;
-
   const randomIndex = Math.floor(
     Math.random() * availableCandidates.value.length
   );
   const selectedWinner = availableCandidates.value[randomIndex];
-
   if (!selectedWinner) return;
-
   let employeeId = selectedWinner.employeeId.toString().trim();
-  // Always pad to 7 digits as requested
   employeeId = employeeId.padStart(7, "0");
-
   const message = {
     type: "start-draw",
     employeeId,
@@ -395,24 +304,14 @@ const startDraw = () => {
     duration: spinDuration,
     winnersList: JSON.parse(JSON.stringify(winners.value)),
   };
-
-  // Broadcast start event
   broadcastChannel?.postMessage(message);
-
-  // Direct postMessage fallback
   displayWindow?.postMessage(message, "*");
-
-  // LocalStorage fallback (triggers storage event in other windows)
   localStorage.setItem(
     "lucky-draw-event",
     JSON.stringify({ ...message, timestamp: Date.now() })
   );
-
-  // Wait for animation to finish before showing winner in table
   setTimeout(async () => {
     isSpinning.value = false;
-
-    // Save winner to DB
     try {
       await $fetch("/api/lucky-draw/history", {
         method: "POST",
@@ -427,33 +326,26 @@ const startDraw = () => {
     } catch (error) {
       console.error("Error saving winner:", error);
     }
-
     winners.value.unshift({
       ...selectedWinner,
       wonAt: new Date(),
     });
-
     const winnerMessage = {
       type: "show-winner",
       winner: JSON.parse(JSON.stringify(selectedWinner)),
       winnersList: JSON.parse(JSON.stringify(winners.value)),
     };
-
     broadcastChannel?.postMessage(winnerMessage);
     displayWindow?.postMessage(winnerMessage, "*");
     localStorage.setItem(
       "lucky-draw-event",
       JSON.stringify({ ...winnerMessage, timestamp: Date.now() })
     );
-
-    // Refresh table
     refreshTable();
   }, spinDuration);
 };
-
 const loadHistory = async () => {
   try {
-    // Fetch ALL winners for game logic (limit 10000)
     const response: any = await $fetch("/api/lucky-draw/history", {
       query: { limit: 10000 },
     });
@@ -467,7 +359,6 @@ const loadHistory = async () => {
     console.error("Error loading history:", error);
   }
 };
-
 const loadRegistrations = async () => {
   try {
     const response: any = await $fetch("/api/registrations", {
@@ -480,14 +371,11 @@ const loadRegistrations = async () => {
     console.error("Error loading registrations:", error);
   }
 };
-
 const clearDisplayHistory = () => {
   isSpinning.value = false;
-
   const resetMessage = {
     type: "clear-history",
   };
-
   broadcastChannel?.postMessage(resetMessage);
   displayWindow?.postMessage(resetMessage, "*");
   localStorage.setItem(
@@ -495,14 +383,11 @@ const clearDisplayHistory = () => {
     JSON.stringify({ ...resetMessage, timestamp: Date.now() })
   );
 };
-
 const resetDisplay = () => {
   isSpinning.value = false;
-
   const resetMessage = {
     type: "reset",
   };
-
   broadcastChannel?.postMessage(resetMessage);
   displayWindow?.postMessage(resetMessage, "*");
   localStorage.setItem(
@@ -511,10 +396,8 @@ const resetDisplay = () => {
   );
 };
 </script>
-
 <template>
   <div class="space-y-6">
-    <!-- Header Section -->
     <div
       class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
     >
@@ -525,8 +408,6 @@ const resetDisplay = () => {
         </p>
       </div>
     </div>
-
-    <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div class="flex items-center gap-4">
@@ -558,7 +439,6 @@ const resetDisplay = () => {
           </div>
         </div>
       </div>
-
       <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div class="flex items-center gap-4">
           <div class="p-3 bg-green-50 text-green-600 rounded-lg">
@@ -589,7 +469,6 @@ const resetDisplay = () => {
           </div>
         </div>
       </div>
-
       <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div class="flex items-center gap-4">
           <div class="p-3 bg-purple-50 text-purple-600 rounded-lg">
@@ -625,9 +504,7 @@ const resetDisplay = () => {
         </div>
       </div>
     </div>
-
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Winners Table -->
       <div class="lg:col-span-2">
         <div
           class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
@@ -658,7 +535,6 @@ const resetDisplay = () => {
                 </svg>
                 Export Excel
               </button>
-
               <button
                 v-if="winners.length > 0"
                 @click="clearHistory"
@@ -668,8 +544,6 @@ const resetDisplay = () => {
               </button>
             </div>
           </div>
-
-          <!-- Search Bar -->
           <div class="p-4 border-b border-gray-100">
             <div class="relative w-full">
               <input
@@ -694,7 +568,6 @@ const resetDisplay = () => {
               </svg>
             </div>
           </div>
-
           <div class="overflow-x-auto">
             <table class="table w-full">
               <thead>
@@ -885,8 +758,6 @@ const resetDisplay = () => {
               </tbody>
             </table>
           </div>
-
-          <!-- Pagination -->
           <div
             class="p-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4"
           >
@@ -894,7 +765,6 @@ const resetDisplay = () => {
               แสดง {{ pagination.start + 1 }} - {{ pagination.end }} จาก
               {{ pagination.total }}
             </div>
-
             <div class="flex gap-1 order-1 sm:order-2">
               <button
                 class="btn btn-sm btn-circle btn-ghost"
@@ -916,7 +786,6 @@ const resetDisplay = () => {
                   />
                 </svg>
               </button>
-
               <template v-for="pageNum in pagination.totalPages" :key="pageNum">
                 <button
                   v-if="
@@ -939,7 +808,6 @@ const resetDisplay = () => {
                   ···
                 </span>
               </template>
-
               <button
                 class="btn btn-sm btn-circle btn-ghost"
                 :disabled="page === pagination.totalPages"
@@ -961,7 +829,6 @@ const resetDisplay = () => {
                 </svg>
               </button>
             </div>
-
             <select
               v-model="limit"
               class="select select-sm select-bordered rounded-full order-3"
@@ -974,10 +841,7 @@ const resetDisplay = () => {
           </div>
         </div>
       </div>
-
-      <!-- Control Panel -->
       <div class="lg:col-span-1 space-y-6">
-        <!-- Display Preview Card -->
         <div
           class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
         >
@@ -991,8 +855,6 @@ const resetDisplay = () => {
               class="absolute inset-0 w-[400%] h-[400%] origin-top-left transform scale-[0.25] pointer-events-none select-none"
               tabindex="-1"
             ></iframe>
-
-            <!-- Hover Overlay -->
             <div
               class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm rounded-xl"
             >
@@ -1018,7 +880,6 @@ const resetDisplay = () => {
             </div>
           </div>
         </div>
-
         <div
           class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
         >
@@ -1066,7 +927,6 @@ const resetDisplay = () => {
                 winners.length > 0 ? "สุ่มอีกครั้ง 🎲" : "เริ่มสุ่มรางวัล 🎲"
               }}</span>
             </button>
-
             <button
               @click="resetDisplay"
               :disabled="isSpinning"
@@ -1090,8 +950,6 @@ const resetDisplay = () => {
             </button>
           </div>
         </div>
-
-        <!-- Settings Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h3 class="text-lg font-bold text-gray-800 mb-4">ตั้งค่าการสุ่ม</h3>
           <div class="space-y-4">
@@ -1189,7 +1047,6 @@ const resetDisplay = () => {
                 </button>
               </div>
             </div>
-
             <div class="form-control">
               <label class="label">
                 <span class="label-text">คำโปรย (Subtitle)</span>
@@ -1284,7 +1141,6 @@ const resetDisplay = () => {
                 </button>
               </div>
             </div>
-
             <div class="form-control">
               <label class="label">
                 <span class="label-text">ข้อความรอ (Wait Text)</span>
@@ -1379,9 +1235,7 @@ const resetDisplay = () => {
                 </button>
               </div>
             </div>
-
             <div class="divider"></div>
-
             <div class="form-control">
               <label class="label cursor-pointer justify-start gap-4">
                 <input
@@ -1392,7 +1246,6 @@ const resetDisplay = () => {
                 <span class="label-text">จำกัดจำนวนรางวัล</span>
               </label>
             </div>
-
             <div v-if="isPrizeLimited" class="form-control">
               <label class="label">
                 <span class="label-text">จำนวนรางวัลทั้งหมด</span>
@@ -1404,7 +1257,6 @@ const resetDisplay = () => {
                 min="1"
               />
             </div>
-
             <div class="form-control">
               <label class="label cursor-pointer justify-start gap-4">
                 <input
@@ -1421,7 +1273,6 @@ const resetDisplay = () => {
     </div>
   </div>
 </template>
-
 <style scoped>
 @keyframes fade-in {
   from {
@@ -1433,7 +1284,6 @@ const resetDisplay = () => {
     transform: scale(1) translateY(0);
   }
 }
-
 .animate-fade-in {
   animation: fade-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }

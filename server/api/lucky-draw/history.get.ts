@@ -1,5 +1,4 @@
 import { prisma } from "../../utils/prisma";
-
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const page = parseInt(query.page as string) || 1;
@@ -8,8 +7,6 @@ export default defineEventHandler(async (event) => {
   const sortBy = (query.sortBy as string) || "wonAt";
   const sortOrder = (query.sortOrder as string) || "desc";
   const offset = (page - 1) * limit;
-
-  // Build where clause for search
   const where = search
     ? {
         OR: [
@@ -20,23 +17,16 @@ export default defineEventHandler(async (event) => {
         ],
       }
     : {};
-
-  // Build orderBy clause
   const orderBy: any = {};
   orderBy[sortBy] = sortOrder;
-
   try {
-    // Get total count for pagination
     const total = await prisma.winner.count({ where });
-
-    // Get paginated data
     const history = await prisma.winner.findMany({
       where,
       orderBy,
       skip: offset,
       take: limit,
     });
-
     return {
       success: true,
       data: history,

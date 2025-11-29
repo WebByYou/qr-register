@@ -1,24 +1,18 @@
 import { z } from "zod";
 import { qrDisplayEmitter } from "../../utils/qr-display";
-
 const settingsSchema = z.record(z.any());
-
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
     const result = settingsSchema.safeParse(body);
-
     if (!result.success) {
       throw createError({
         statusCode: 400,
         statusMessage: "Invalid settings format",
       });
     }
-
     const settings = result.data;
     const updates = [];
-
-    // Upsert each setting
     for (const [key, value] of Object.entries(settings)) {
       let stringValue = value;
       if (typeof value === "object") {
@@ -26,7 +20,6 @@ export default defineEventHandler(async (event) => {
       } else {
         stringValue = String(value);
       }
-
       updates.push(
         prisma.systemSetting.upsert({
           where: { key },
@@ -35,12 +28,8 @@ export default defineEventHandler(async (event) => {
         })
       );
     }
-
     await prisma.$transaction(updates);
-
-    // Emit update event for real-time display
     qrDisplayEmitter.emit("update", settings);
-
     return {
       success: true,
       message: "Settings updated successfully",

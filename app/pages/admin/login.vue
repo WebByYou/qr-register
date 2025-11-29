@@ -2,22 +2,17 @@
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import * as z from "zod";
-
 const router = useRouter();
 const error = ref("");
-
 const schema = toTypedSchema(
   z.object({
     password: z.string().min(1, "กรุณากรอกรหัสผ่าน"),
   })
 );
-
 const { handleSubmit, errors, defineField } = useForm({
   validationSchema: schema,
 });
-
 const [password, passwordProps] = defineField("password");
-
 const handleLogin = handleSubmit(async (values) => {
   try {
     await $fetch("/api/auth/login", {
@@ -30,7 +25,6 @@ const handleLogin = handleSubmit(async (values) => {
   }
 });
 </script>
-
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100">
     <div class="bg-white p-8 rounded-lg shadow-md w-96">
@@ -51,7 +45,6 @@ const handleLogin = handleSubmit(async (values) => {
             errors.password
           }}</span>
         </div>
-
         <div v-if="error" class="text-red-500 text-sm">{{ error }}</div>
         <button
           type="submit"

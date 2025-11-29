@@ -2,11 +2,9 @@
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
 import * as z from "zod";
-
 const router = useRouter();
 const isSubmitting = ref(false);
 const submitError = ref("");
-
 const schema = toTypedSchema(
   z.object({
     firstName: z.string().min(1, "กรุณากรอกชื่อ"),
@@ -18,7 +16,6 @@ const schema = toTypedSchema(
       .regex(/^\d+$/, "รหัสพนักงานต้องเป็นตัวเลขเท่านั้น"),
   })
 );
-
 const { handleSubmit, errors, defineField, setErrors } = useForm({
   validationSchema: schema,
   initialValues: {
@@ -27,13 +24,10 @@ const { handleSubmit, errors, defineField, setErrors } = useForm({
     employeeId: "",
   },
 });
-
 const [firstName, firstNameProps] = defineField("firstName");
 const [lastName, lastNameProps] = defineField("lastName");
 const [employeeId, employeeIdProps] = defineField("employeeId");
-
 const { showSuccess, showError } = useSwal();
-
 const onSubmit = handleSubmit(async (values) => {
   isSubmitting.value = true;
   submitError.value = "";
@@ -42,7 +36,6 @@ const onSubmit = handleSubmit(async (values) => {
       method: "POST",
       body: values,
     });
-    // await showSuccess("ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว", "ลงทะเบียนสำเร็จ!");
     router.push(`/success?id=${response.id}`);
   } catch (error: any) {
     if (error.data?.statusMessage) {
@@ -60,16 +53,13 @@ const onSubmit = handleSubmit(async (values) => {
   }
 });
 </script>
-
 <template>
   <div
     class="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden"
   >
-    <!-- Decorative Background -->
     <div
       class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-indigo-50 to-transparent pointer-events-none"
     ></div>
-
     <div
       class="card w-full max-w-md bg-white shadow-xl border border-gray-100 z-10"
     >
@@ -78,9 +68,7 @@ const onSubmit = handleSubmit(async (values) => {
           <h2 class="text-3xl font-bold text-gray-900">ลงทะเบียน</h2>
           <p class="text-gray-500 mt-2">กรอกข้อมูลเพื่อเข้าร่วมกิจกรรม</p>
         </div>
-
         <form @submit="onSubmit" class="space-y-5">
-          <!-- First Name -->
           <div class="form-control w-full">
             <label class="label px-0">
               <span class="label-text font-semibold text-gray-700">ชื่อ</span>
@@ -99,8 +87,6 @@ const onSubmit = handleSubmit(async (values) => {
               }}</span>
             </label>
           </div>
-
-          <!-- Last Name -->
           <div class="form-control w-full">
             <label class="label px-0">
               <span class="label-text font-semibold text-gray-700"
@@ -121,8 +107,6 @@ const onSubmit = handleSubmit(async (values) => {
               }}</span>
             </label>
           </div>
-
-          <!-- Employee ID -->
           <div class="form-control w-full">
             <label class="label px-0">
               <span class="label-text font-semibold text-gray-700"
@@ -144,8 +128,6 @@ const onSubmit = handleSubmit(async (values) => {
               }}</span>
             </label>
           </div>
-
-          <!-- General Error -->
           <div
             v-if="submitError"
             class="alert alert-error bg-red-50 text-red-600 border-red-100 text-sm mt-4"
@@ -165,8 +147,6 @@ const onSubmit = handleSubmit(async (values) => {
             </svg>
             <span>{{ submitError }}</span>
           </div>
-
-          <!-- Submit Button -->
           <div class="card-actions justify-end mt-8">
             <button
               type="submit"

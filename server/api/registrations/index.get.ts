@@ -7,8 +7,6 @@ export default defineEventHandler(async (event) => {
   const sortBy = (query.sortBy as string) || "createdAt";
   const sortOrder = (query.sortOrder as string) || "desc";
   const offset = (page - 1) * limit;
-
-  // Build where clause for search
   const where = search
     ? {
         OR: [
@@ -18,22 +16,15 @@ export default defineEventHandler(async (event) => {
         ],
       }
     : {};
-
-  // Build orderBy clause
   const orderBy: any = {};
   orderBy[sortBy] = sortOrder;
-
-  // Get total count for pagination
   const total = await prisma.registration.count({ where });
-
-  // Get paginated data
   const registrations = await prisma.registration.findMany({
     where,
     orderBy,
     skip: offset,
     take: limit,
   });
-
   return {
     data: registrations,
     pagination: {

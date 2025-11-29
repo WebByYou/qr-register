@@ -1,7 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-
 const prisma = new PrismaClient();
-
 export default defineEventHandler(async (event) => {
   try {
     const setting = await prisma.systemSetting.findUnique({
@@ -9,7 +7,6 @@ export default defineEventHandler(async (event) => {
         key: "qr_settings",
       },
     });
-
     if (!setting) {
       return {
         success: true,
@@ -21,7 +18,6 @@ export default defineEventHandler(async (event) => {
         },
       };
     }
-
     return {
       success: true,
       data: JSON.parse(setting.value),

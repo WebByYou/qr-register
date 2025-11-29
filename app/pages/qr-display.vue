@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import QRCode from "qrcode";
-
 const {
   count: registrationCount,
   isConnected,
@@ -8,8 +7,6 @@ const {
   onMessage,
   removeListener,
 } = useRegistration();
-
-// Local settings state
 const settings = ref({
   backgroundImage: "",
   qrPosition: { x: 300, y: 150 },
@@ -19,7 +16,6 @@ const settings = ref({
   titleStyle: { color: "#ffffff", size: 3.1, locked: false },
   subtitleStyle: { color: "#ffffff", size: 1.5, locked: false },
   countStyle: { color: "#ffffff", size: 1.25, locked: false },
-
   qrStyle: {
     locked: false,
     border: false,
@@ -33,16 +29,12 @@ const settings = ref({
   showTitle: true,
   showSubtitle: true,
 });
-
 const registrationUrl = ref("");
 const qrCodeDataUrl = ref("");
 const isLoading = ref(true);
-
-// Handle SSE messages from store
 const handleSSEMessage = (parsed: any) => {
   if (parsed.type === "settings") {
     const data = parsed.data;
-    // Ensure locked property exists
     if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
       data.titleStyle.locked = false;
     if (data.subtitleStyle && typeof data.subtitleStyle.locked === "undefined")
@@ -57,62 +49,46 @@ const handleSSEMessage = (parsed: any) => {
         borderWidth: 10,
       };
     }
-
     if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
       settings.value = data;
     }
   }
 };
-
 onMounted(async () => {
   const baseUrl = window.location.origin;
   registrationUrl.value = `${baseUrl}/register`;
   await loadSettings();
   await generateQRCode();
   isLoading.value = false;
-
-  // Initialize store
   init();
   onMessage(handleSSEMessage);
-
-  // Preview Mode Logic
   if (isPreview.value) {
     window.addEventListener("message", handleMessage);
   }
 });
-
 onUnmounted(() => {
   removeListener(handleSSEMessage);
   if (isPreview.value) {
     window.removeEventListener("message", handleMessage);
   }
 });
-
 const route = useRoute();
 const isPreview = computed(() => route.query.preview === "true");
 const qrElement = ref<HTMLElement | null>(null);
-const isDragging = ref<string | null>(null); // 'qr', 'title', 'subtitle', 'count' or null
-
-// Handle messages from Admin Panel
+const isDragging = ref<string | null>(null); 
 const handleMessage = (event: MessageEvent) => {
-  if (isDragging.value) return; // Ignore updates while dragging to prevent loop/bounce
+  if (isDragging.value) return; 
   if (event.data.type === "UPDATE_SETTINGS") {
-    // Update local settings from parent
     settings.value = { ...settings.value, ...event.data.settings };
   }
 };
-
-// Drag Logic
 const startDrag = (e: MouseEvent, type: string) => {
   if (!isPreview.value) return;
-
   isDragging.value = type;
   const startX = e.clientX;
   const startY = e.clientY;
-
   let startLeft = 0;
   let startTop = 0;
-
   if (type === "qr") {
     if (settings.value.qrStyle.locked) return;
     startLeft = settings.value.qrPosition.x;
@@ -130,29 +106,17 @@ const startDrag = (e: MouseEvent, type: string) => {
     startLeft = settings.value.countPosition.x;
     startTop = settings.value.countPosition.y;
   }
-
-  // Calculate scale based on the 16:9 container width vs 1920
-  // We need to find the container element
-  // Since qrElement might not be the target if dragging title, we need a reliable container ref or traverse up
-  // But for simplicity, we can assume the parent of the target is the container (or close enough)
-  // Actually, let's use qrElement's parent if available, or just document.body if we are in iframe
-  // Better: use e.target to find the container
   const target = e.target as HTMLElement;
   const container = target.closest(".aspect-video");
-
   if (!container) return;
-
   const rect = container.getBoundingClientRect();
   const scaleX = 1920 / rect.width;
   const scaleY = 1080 / rect.height;
-
   const onMouseMove = (moveEvent: MouseEvent) => {
     const dx = (moveEvent.clientX - startX) * scaleX;
     const dy = (moveEvent.clientY - startY) * scaleY;
-
     const newX = Math.round(startLeft + dx);
     const newY = Math.round(startTop + dy);
-
     if (type === "qr") {
       settings.value.qrPosition = { x: newX, y: newY };
       window.parent.postMessage(
@@ -191,48 +155,30 @@ const startDrag = (e: MouseEvent, type: string) => {
       );
     }
   };
-
   const onMouseUp = () => {
     isDragging.value = null;
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
   };
-
   document.addEventListener("mousemove", onMouseMove);
   document.addEventListener("mouseup", onMouseUp);
 };
-
-// Watch for showCount changes to start/stop polling
-// Watch for showCount changes to fetch initial count
 watch(
   () => settings.value.showCount,
   (newVal) => {
-    // We don't need to manually fetch count here anymore as the store handles it
-    // But if we want to force refresh when showing, we can call fetchCount from store
-    // For now, the store keeps it updated.
   }
 );
-
-// Watch for size changes to regenerate QR code with correct resolution
 watch(
   () => settings.value.qrSize,
   () => {
     generateQRCode();
   }
 );
-
 const loadSettings = async () => {
   try {
     const response: any = await $fetch("/api/qr-display/settings");
     if (response?.success && response?.data) {
-      // Only update if values changed to avoid unnecessary re-renders if Vue doesn't handle deep equal automatically (it usually does for refs but good to be safe, though replacing the object works too)
-      // For simplicity, we just replace the value, Vue handles the rest.
-      // We might want to check if background image changed to avoid flickering?
-      // Vue's diffing should handle it.
-
-      // Check if we need to update to avoid replacing if identical (optional optimization, but replacing is fine)
       const data = response.data;
-      // Ensure locked property exists
       if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
         data.titleStyle.locked = false;
       if (
@@ -250,7 +196,6 @@ const loadSettings = async () => {
           borderWidth: 10,
         };
       }
-
       if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
         settings.value = data;
       }
@@ -259,10 +204,8 @@ const loadSettings = async () => {
     console.error("Error loading settings:", error);
   }
 };
-
 const generateQRCode = async () => {
   if (!registrationUrl.value) return;
-
   try {
     const dataUrl = await QRCode.toDataURL(registrationUrl.value, {
       width: settings.value.qrSize,
@@ -277,10 +220,7 @@ const generateQRCode = async () => {
     console.error("Error generating QR code:", err);
   }
 };
-
-// Full Screen Logic
 const isFullScreen = ref(false);
-
 const toggleFullScreen = () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch((err) => {
@@ -296,19 +236,14 @@ const toggleFullScreen = () => {
     }
   }
 };
-
-// Listen for fullscreen change events (e.g. user presses Esc)
 onMounted(() => {
   document.addEventListener("fullscreenchange", () => {
     isFullScreen.value = !!document.fullscreenElement;
   });
 });
 </script>
-
 <template>
   <div class="min-h-screen w-full overflow-hidden">
-    <!-- Loading State -->
-    <!-- Loading State (Skeleton) -->
     <div
       v-if="isLoading"
       class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
@@ -316,25 +251,15 @@ onMounted(() => {
       <div
         class="relative z-10 text-center p-8 w-full max-w-4xl flex flex-col items-center"
       >
-        <!-- Title Skeleton -->
         <div class="h-16 w-3/4 bg-gray-300 rounded-lg animate-pulse mb-4"></div>
-
-        <!-- Subtitle Skeleton -->
         <div class="h-8 w-1/2 bg-gray-300 rounded-lg animate-pulse mb-12"></div>
-
-        <!-- QR Code Skeleton -->
         <div class="bg-white p-4 rounded-xl shadow-2xl mb-8 animate-pulse">
           <div class="w-[300px] h-[300px] bg-gray-200 rounded-lg"></div>
         </div>
-
-        <!-- Wait Text Skeleton -->
         <div class="h-8 w-1/3 bg-gray-300 rounded-lg animate-pulse"></div>
       </div>
     </div>
-
-    <!-- Display Container -->
     <div v-else class="fixed inset-0 flex items-center justify-center bg-black">
-      <!-- 16:9 Aspect Ratio Container -->
       <div
         v-if="settings"
         class="relative w-full aspect-video max-h-screen max-w-[177.78vh] shadow-2xl overflow-hidden"
@@ -348,10 +273,6 @@ onMounted(() => {
           backgroundRepeat: 'no-repeat',
         }"
       >
-        <!-- Content Container (Title/Subtitle/WaitText) -->
-        <!-- Use percentages relative to the 16:9 container for consistent scaling -->
-        <!-- Content Container (Title/Subtitle/WaitText) -->
-        <!-- Title -->
         <div
           v-if="settings.showTitle"
           class="absolute transition-all duration-75 ease-out font-bold drop-shadow-lg whitespace-nowrap select-none"
@@ -371,8 +292,6 @@ onMounted(() => {
         >
           {{ settings.title || "Lucky Draw" }}
         </div>
-
-        <!-- Subtitle -->
         <div
           v-if="settings.showSubtitle"
           class="absolute transition-all duration-75 ease-out opacity-90 drop-shadow-md whitespace-nowrap select-none"
@@ -392,18 +311,6 @@ onMounted(() => {
         >
           {{ settings.subtitle || "ลุ้นรับรางวัลใหญ่" }}
         </div>
-
-        <!-- Registration Count (Positioned relative to subtitle or fixed? Let's keep it fixed for now or move with subtitle?) -->
-        <!-- User only asked for Title and Subtitle. Let's keep count fixed or maybe make it draggable later if asked. -->
-        <!-- Actually, usually count is part of the text group. Let's put it below subtitle for now, or maybe it should be draggable too? -->
-        <!-- For now, I'll keep it centered as a fallback or maybe just hide it if not draggable? -->
-        <!-- Wait, the original code had it in a flex container centered. -->
-        <!-- If I move title and subtitle out of the flex container, the count will be left alone. -->
-        <!-- Let's make the count draggable too? Or just leave it in the center? -->
-        <!-- The user request specifically mentioned "Title and sub". -->
-        <!-- I will leave the count in the center for now, but maybe I should make it draggable too to be safe. -->
-        <!-- Let's stick to the request: Title and Sub. -->
-
         <div
           v-if="settings.showCount"
           class="absolute transition-all duration-75 ease-out font-light tracking-wider whitespace-nowrap select-none"
@@ -425,7 +332,6 @@ onMounted(() => {
           <span class="font-bold">{{ registrationCount }}</span>
           คน
         </div>
-
         <div
           v-if="qrCodeDataUrl"
           ref="qrElement"
@@ -449,16 +355,12 @@ onMounted(() => {
           />
         </div>
       </div>
-
-      <!-- Admin Link (Hidden, only visible on hover bottom right) -->
       <NuxtLink
         to="/admin"
         class="fixed bottom-4 right-4 opacity-0 hover:opacity-100 transition-opacity duration-300 text-xs text-white/50 hover:text-white/80"
       >
         Admin
       </NuxtLink>
-
-      <!-- Full Screen Toggle Button -->
       <button
         v-if="!isPreview"
         @click="toggleFullScreen"
@@ -499,9 +401,7 @@ onMounted(() => {
     </div>
   </div>
 </template>
-
 <style scoped>
-/* Ensure fullscreen */
 body {
   margin: 0;
   padding: 0;

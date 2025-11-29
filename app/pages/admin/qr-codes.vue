@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import QRCode from "qrcode";
 import { useDebounceFn } from "@vueuse/core";
-
 definePageMeta({
   layout: "admin",
 });
-
 const registrationUrl = ref("");
 const qrSize = ref(300);
 const qrColor = ref("#000000");
@@ -14,10 +12,7 @@ const showOnDisplay = ref(false);
 const qrCodeDataUrl = ref("");
 const isLoading = ref(true);
 const isSaving = ref(false);
-
 const { showSuccess, showError } = useSwal();
-
-// Display Settings
 const displaySettings = ref({
   backgroundImage: "",
   qrPosition: { x: 300, y: 150 },
@@ -27,7 +22,6 @@ const displaySettings = ref({
   titleStyle: { color: "#ffffff", size: 3.1, locked: false },
   subtitleStyle: { color: "#ffffff", size: 1.5, locked: false },
   countStyle: { color: "#ffffff", size: 1.25, locked: false },
-
   qrStyle: {
     locked: false,
     border: false,
@@ -42,32 +36,26 @@ const displaySettings = ref({
   showSubtitle: true,
 });
 const isSavingDisplay = ref(false);
-
-// Get full registration URL
 onMounted(async () => {
   const baseUrl = window.location.origin;
   registrationUrl.value = `${baseUrl}/register`;
   await loadSettings();
   generateQRCode();
 });
-
 const loadSettings = async () => {
   try {
     const [qrRes, displayRes]: [any, any] = await Promise.all([
       $fetch("/api/qr-code/settings"),
       $fetch("/api/qr-display/settings"),
     ]);
-
     if (qrRes?.success && qrRes?.data) {
       qrSize.value = qrRes.data.size || 300;
       qrColor.value = qrRes.data.color || "#000000";
       qrBgColor.value = qrRes.data.bgColor || "#ffffff";
       showOnDisplay.value = qrRes.data.showOnDisplay || false;
     }
-
     if (displayRes?.success && displayRes?.data) {
       const data = displayRes.data;
-      // Ensure locked property exists
       if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
         data.titleStyle.locked = false;
       if (
@@ -85,7 +73,6 @@ const loadSettings = async () => {
           borderWidth: 10,
         };
       }
-
       displaySettings.value = {
         ...displaySettings.value,
         ...data,
@@ -97,7 +84,6 @@ const loadSettings = async () => {
     isLoading.value = false;
   }
 };
-
 const saveSettings = useDebounceFn(async () => {
   isSaving.value = true;
   try {
@@ -117,11 +103,8 @@ const saveSettings = useDebounceFn(async () => {
     isSaving.value = false;
   }
 }, 1000);
-
-// Generate QR Code locally
 const generateQRCode = async () => {
   if (!registrationUrl.value) return;
-
   try {
     const dataUrl = await QRCode.toDataURL(registrationUrl.value, {
       width: qrSize.value,
@@ -136,23 +119,18 @@ const generateQRCode = async () => {
     console.error("Error generating QR code:", err);
   }
 };
-
-// Watch for changes and regenerate (but don't auto-save)
 watch([qrSize, qrColor, qrBgColor, showOnDisplay], () => {
   generateQRCode();
 });
-
 const downloadQR = () => {
   const link = document.createElement("a");
   link.href = qrCodeDataUrl.value;
   link.download = `qr-code-register-${Date.now()}.png`;
   link.click();
 };
-
 const printQR = () => {
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
-
   const doc = printWindow.document;
   doc.open();
   doc.write("<!DOCTYPE html>");
@@ -170,16 +148,11 @@ const printQR = () => {
   doc.write("<p>" + registrationUrl.value + "</p></div>");
   doc.write("</body></html>");
   doc.close();
-
   setTimeout(() => {
     printWindow.print();
   }, 500);
 };
-
-// Iframe Communication
 const previewIframe = ref<HTMLIFrameElement | null>(null);
-
-// Listen for messages from iframe (drag updates)
 const handleIframeMessage = (event: MessageEvent) => {
   if (event.data.type === "UPDATE_QR_POSITION") {
     displaySettings.value.qrPosition = event.data.position;
@@ -191,21 +164,16 @@ const handleIframeMessage = (event: MessageEvent) => {
     displaySettings.value.countPosition = event.data.position;
   }
 };
-
 onMounted(() => {
   window.addEventListener("message", handleIframeMessage);
 });
-
 onUnmounted(() => {
   window.removeEventListener("message", handleIframeMessage);
 });
-
-// Sync settings to iframe
 watch(
   displaySettings,
   (newSettings) => {
     if (previewIframe.value?.contentWindow) {
-      // Deep clone to remove Proxy wrappers and avoid DataCloneError
       const plainSettings = JSON.parse(JSON.stringify(newSettings));
       previewIframe.value.contentWindow.postMessage(
         {
@@ -218,7 +186,6 @@ watch(
   },
   { deep: true }
 );
-
 const saveDisplaySettings = async () => {
   isSavingDisplay.value = true;
   try {
@@ -233,7 +200,6 @@ const saveDisplaySettings = async () => {
         titleStyle: displaySettings.value.titleStyle,
         subtitleStyle: displaySettings.value.subtitleStyle,
         countStyle: displaySettings.value.countStyle,
-
         qrStyle: displaySettings.value.qrStyle,
         qrSize: displaySettings.value.qrSize,
         title: displaySettings.value.title,
@@ -251,7 +217,6 @@ const saveDisplaySettings = async () => {
     isSavingDisplay.value = false;
   }
 };
-
 const copyUrl = async () => {
   try {
     await navigator.clipboard.writeText(registrationUrl.value);
@@ -261,13 +226,11 @@ const copyUrl = async () => {
   }
 };
 const displayUrl = ref("");
-
 onMounted(() => {
   if (typeof window !== "undefined") {
     displayUrl.value = `${window.location.origin}/qr-display`;
   }
 });
-
 const copyDisplayUrl = async () => {
   try {
     await navigator.clipboard.writeText(displayUrl.value);
@@ -277,7 +240,6 @@ const copyDisplayUrl = async () => {
   }
 };
 </script>
-
 <template>
   <div>
     <div class="flex justify-between items-center mb-6">
@@ -290,13 +252,10 @@ const copyDisplayUrl = async () => {
         กำลังบันทึก...
       </div>
     </div>
-
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- QR Code Preview -->
       <div class="card bg-base-100 border border-base-300">
         <div class="card-body items-center text-center p-8">
           <h3 class="font-bold text-lg mb-6">ตัวอย่าง QR Code</h3>
-
           <div class="mb-6">
             <div
               v-if="isLoading"
@@ -309,7 +268,6 @@ const copyDisplayUrl = async () => {
               class="w-64 h-64 mx-auto"
             />
           </div>
-
           <div class="w-full max-w-md">
             <div class="text-gray-500 mb-2">สแกนเพื่อลงทะเบียน</div>
             <div
@@ -317,7 +275,6 @@ const copyDisplayUrl = async () => {
             >
               {{ registrationUrl }}
             </div>
-
             <div class="flex flex-wrap justify-center gap-4 mb-8">
               <button
                 class="btn btn-primary px-6 text-white gap-2 min-w-[120px]"
@@ -339,7 +296,6 @@ const copyDisplayUrl = async () => {
                 </svg>
                 ดาวน์โหลด
               </button>
-
               <button
                 class="btn btn-success text-white px-6 gap-2 min-w-[120px]"
                 @click="printQR"
@@ -360,7 +316,6 @@ const copyDisplayUrl = async () => {
                 </svg>
                 พิมพ์
               </button>
-
               <button class="btn btn-ghost gap-2" @click="copyUrl">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -379,7 +334,6 @@ const copyDisplayUrl = async () => {
                 คัดลอก URL
               </button>
             </div>
-
             <div class="alert alert-info text-left">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -402,13 +356,9 @@ const copyDisplayUrl = async () => {
           </div>
         </div>
       </div>
-
-      <!-- Settings -->
       <div class="card bg-base-100 border border-base-300">
         <div class="card-body">
           <h3 class="card-title mb-4">ตั้งค่า QR Code</h3>
-
-          <!-- Show on Display Page -->
           <div class="form-control">
             <label class="label cursor-pointer">
               <span class="label-text font-semibold"
@@ -424,11 +374,7 @@ const copyDisplayUrl = async () => {
               เมื่อเปิดใช้งาน QR Code จะแสดงที่มุมขวาล่างของหน้าจอสุ่มรางวัล
             </div>
           </div>
-
           <div class="divider"></div>
-
-          <!-- Size -->
-          <!-- Size -->
           <div class="form-control w-full">
             <label class="label cursor-pointer pb-2">
               <span class="label-text font-semibold">ขนาด</span>
@@ -442,8 +388,6 @@ const copyDisplayUrl = async () => {
               class="range range-primary w-full"
             />
           </div>
-
-          <!-- QR Color -->
           <div class="form-control mt-4">
             <label class="label">
               <span class="label-text font-semibold">สี QR Code</span>
@@ -462,8 +406,6 @@ const copyDisplayUrl = async () => {
               />
             </div>
           </div>
-
-          <!-- Background Color -->
           <div class="form-control mt-4">
             <label class="label">
               <span class="label-text font-semibold">สีพื้นหลัง</span>
@@ -482,8 +424,6 @@ const copyDisplayUrl = async () => {
               />
             </div>
           </div>
-
-          <!-- Presets -->
           <div class="divider">รูปแบบสำเร็จรูป</div>
           <div class="grid grid-cols-2 gap-2">
             <button
@@ -531,7 +471,6 @@ const copyDisplayUrl = async () => {
               เขียว-ขาว
             </button>
           </div>
-
           <div class="mt-6">
             <button
               class="btn btn-primary w-full"
@@ -548,19 +487,14 @@ const copyDisplayUrl = async () => {
         </div>
       </div>
     </div>
-
-    <!-- QR Display Management -->
     <div class="card bg-base-100 border border-base-300 mt-6">
       <div class="card-body">
         <h3 class="card-title mb-4">จัดการหน้าจอแสดงผล (QR Display)</h3>
-
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <!-- Combined Visual Editor & Controls -->
           <div class="lg:col-span-3">
             <div
               class="border rounded-xl overflow-hidden bg-base-100 shadow-sm"
             >
-              <!-- Iframe Preview -->
               <div class="relative w-full aspect-video bg-gray-100">
                 <iframe
                   ref="previewIframe"
@@ -569,13 +503,10 @@ const copyDisplayUrl = async () => {
                   title="QR Display Preview"
                 ></iframe>
               </div>
-
-              <!-- Controls Section -->
               <div
                 class="p-6 flex flex-col items-center justify-center border-t"
               >
                 <div class="text-gray-500 mb-2">ลิงก์หน้าจอแสดงผล</div>
-
                 <a
                   :href="displayUrl"
                   target="_blank"
@@ -597,7 +528,6 @@ const copyDisplayUrl = async () => {
                     />
                   </svg>
                 </a>
-
                 <div class="flex flex-wrap justify-center gap-4">
                   <button
                     class="btn btn-primary px-6 text-white gap-2 min-w-[120px]"
@@ -619,7 +549,6 @@ const copyDisplayUrl = async () => {
                     </svg>
                     ดาวน์โหลด
                   </button>
-
                   <button
                     class="btn btn-success text-white px-6 gap-2 min-w-[120px]"
                     @click="printQR"
@@ -640,7 +569,6 @@ const copyDisplayUrl = async () => {
                     </svg>
                     พิมพ์
                   </button>
-
                   <button class="btn btn-ghost gap-2" @click="copyDisplayUrl">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -662,8 +590,6 @@ const copyDisplayUrl = async () => {
               </div>
             </div>
           </div>
-
-          <!-- Settings Form -->
           <div class="lg:col-span-1">
             <div class="form-control">
               <label class="label">
@@ -681,8 +607,6 @@ const copyDisplayUrl = async () => {
                 ใส่ URL ของรูปภาพที่ต้องการใช้เป็นพื้นหลัง
               </div>
             </div>
-
-            <!-- QR Settings Group -->
             <div
               class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
             >
@@ -730,8 +654,6 @@ const copyDisplayUrl = async () => {
                     </button>
                   </div>
                 </div>
-
-                <!-- QR Size -->
                 <div class="form-control mb-4">
                   <label class="label pt-0 pb-2 justify-start">
                     <span class="label-text text-sm font-medium">ขนาด</span>
@@ -748,8 +670,6 @@ const copyDisplayUrl = async () => {
                 </div>
               </div>
             </div>
-
-            <!-- Title Group -->
             <div
               class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
             >
@@ -851,7 +771,6 @@ const copyDisplayUrl = async () => {
                     placeholder="Lucky Draw"
                     :disabled="displaySettings.titleStyle.locked"
                   />
-
                   <div class="flex gap-4 items-start">
                     <div class="flex-1">
                       <label class="label pt-0 pb-2 justify-start">
@@ -882,8 +801,6 @@ const copyDisplayUrl = async () => {
                 </div>
               </div>
             </div>
-
-            <!-- Subtitle Group -->
             <div
               class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
             >
@@ -986,7 +903,6 @@ const copyDisplayUrl = async () => {
                     placeholder="ลุ้นรับรางวัลใหญ่"
                     :disabled="displaySettings.subtitleStyle.locked"
                   />
-
                   <div class="flex gap-4 items-start">
                     <div class="flex-1">
                       <label class="label pt-0 pb-2 justify-start">
@@ -1017,8 +933,6 @@ const copyDisplayUrl = async () => {
                 </div>
               </div>
             </div>
-
-            <!-- Count Group -->
             <div
               class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
             >
@@ -1115,7 +1029,6 @@ const copyDisplayUrl = async () => {
                 <div class="text-xs text-base-content/60 mb-3">
                   แสดงจำนวนผู้ลงทะเบียน
                 </div>
-
                 <div
                   v-if="displaySettings.showCount"
                   class="pt-2 border-t mt-2"
@@ -1150,7 +1063,6 @@ const copyDisplayUrl = async () => {
                 </div>
               </div>
             </div>
-
             <div class="mt-6">
               <button
                 class="btn btn-primary"
