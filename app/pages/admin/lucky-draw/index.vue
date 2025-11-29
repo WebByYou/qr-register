@@ -219,6 +219,33 @@ const clearHistory = async () => {
     showError("ล้างประวัติไม่สำเร็จ", "เกิดข้อผิดพลาด");
   }
 };
+
+const deleteWinner = async (id: number) => {
+  const confirmed = await showConfirm(
+    "คุณแน่ใจหรือไม่ที่จะลบผู้โชคดีรายนี้?",
+    "ยืนยันการลบ?",
+    {
+      confirmButtonText: "ใช่, ลบเลย",
+      confirmButtonColor: "#d33",
+    }
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await $fetch("/api/lucky-draw/history", {
+      method: "DELETE",
+      query: { id },
+    });
+    
+    winners.value = winners.value.filter(w => w.id !== id);
+    refreshTable();
+    showSuccess("ลบผู้โชคดีเรียบร้อยแล้ว", "สำเร็จ!");
+  } catch (error) {
+    console.error("Error deleting winner:", error);
+    showError("ลบผู้โชคดีไม่สำเร็จ", "เกิดข้อผิดพลาด");
+  }
+};
 const loadSettings = async () => {
   try {
     const response: any = await $fetch("/api/qr-display/settings");
@@ -270,7 +297,7 @@ const openDisplayWindow = () => {
 const availableCandidates = computed(() => {
   let candidates = allRegistrations.value.filter((reg: any) => {
     const id = reg.employeeId?.toString().trim();
-    return id && (id.length === 5 || id.length === 7);
+    return id && id.length <= 7;
   });
   if (!allowRepeatWinners.value) {
     candidates = candidates.filter(
@@ -286,7 +313,6 @@ const startDraw = () => {
     return;
   }
   if (availableCandidates.value.length === 0) {
-    showError("ไม่พบผู้มีสิทธิ์ลุ้นรางวัล (หรือรางวัลหมดแล้ว)!", "แจ้งเตือน");
     return;
   }
   isSpinning.value = true;
@@ -300,7 +326,7 @@ const startDraw = () => {
   const message = {
     type: "start-draw",
     employeeId,
-    winner: JSON.parse(JSON.stringify(selectedWinner)),
+    winner: JSON.parse(JSON.stringify({ ...selectedWinner, employeeId })),
     duration: spinDuration,
     winnersList: JSON.parse(JSON.stringify(winners.value)),
   };
@@ -316,7 +342,7 @@ const startDraw = () => {
       await $fetch("/api/lucky-draw/history", {
         method: "POST",
         body: {
-          employeeId: selectedWinner.employeeId,
+          employeeId: employeeId,
           firstName: selectedWinner.firstName,
           lastName: selectedWinner.lastName,
           department: (selectedWinner as any).department || "",
@@ -328,11 +354,12 @@ const startDraw = () => {
     }
     winners.value.unshift({
       ...selectedWinner,
+      employeeId: employeeId,
       wonAt: new Date(),
     });
     const winnerMessage = {
       type: "show-winner",
-      winner: JSON.parse(JSON.stringify(selectedWinner)),
+      winner: JSON.parse(JSON.stringify({ ...selectedWinner, employeeId })),
       winnersList: JSON.parse(JSON.stringify(winners.value)),
     };
     broadcastChannel?.postMessage(winnerMessage);
@@ -620,6 +647,7 @@ const resetDisplay = () => {
                       </span>
                     </div>
                   </th>
+                  <th class="py-4 text-center w-20">จัดการ</th>
                 </tr>
               </thead>
               <tbody>
@@ -642,7 +670,7 @@ const resetDisplay = () => {
                 </template>
                 <template v-else>
                   <tr v-if="paginatedWinners.length === 0">
-                    <td colspan="4" class="text-center py-8 text-gray-400">
+                    <td colspan="5" class="text-center py-8 text-gray-400">
                       {{
                         searchQuery ? "ไม่พบข้อมูลที่ค้นหา" : "ยังไม่มีผู้โชคดี"
                       }}
@@ -752,6 +780,28 @@ const resetDisplay = () => {
                           </svg>
                         </button>
                       </div>
+                    </td>
+                    <td class="text-center">
+                      <button
+                        @click="deleteWinner(winner.id)"
+                        class="btn btn-ghost btn-xs text-red-500 hover:bg-red-50"
+                        title="ลบรายการ"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 </template>
@@ -896,7 +946,6 @@ const resetDisplay = () => {
               @click="startDraw"
               :disabled="
                 isSpinning ||
-                availableCandidates.length === 0 ||
                 (isPrizeLimited && winners.length >= totalPrizes)
               "
               class="btn btn-lg w-full bg-gradient-to-r from-amber-500 to-orange-600 border-none text-white hover:from-amber-600 hover:to-orange-700 shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
