@@ -259,7 +259,7 @@ const onSubmit = handleSubmit(async (values) => {
       <div class="mt-6">
         <button
           type="submit"
-          class="btn btn-warning w-full text-white"
+          class="btn btn-primary w-full text-white"
           :disabled="isLoading"
         >
           <span
