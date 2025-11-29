@@ -12,6 +12,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      title: "ระบบลงทะเบียนและจับฉลาก",
       htmlAttrs: {
         "data-theme": "light",
       },
@@ -19,6 +20,11 @@ export default defineNuxtConfig({
         {
           rel: "stylesheet",
           href: "https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap",
+        },
+        {
+          rel: "icon",
+          type: "image/svg+xml",
+          href: "/favicon.svg",
         },
       ],
     },
