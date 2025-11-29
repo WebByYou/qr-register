@@ -32,3 +32,9 @@ model Winner {
   prize      String?
   wonAt      DateTime @default(now())
 }
+
+model Admin {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  password String
+}
