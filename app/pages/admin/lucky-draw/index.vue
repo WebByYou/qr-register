@@ -239,6 +239,18 @@ const deleteWinner = async (id: number) => {
     });
     
     winners.value = winners.value.filter(w => w.id !== id);
+    
+    const syncMessage = {
+      type: "sync-state",
+      winnersList: JSON.parse(JSON.stringify(winners.value)),
+    };
+    broadcastChannel?.postMessage(syncMessage);
+    displayWindow?.postMessage(syncMessage, "*");
+    localStorage.setItem(
+      "lucky-draw-event",
+      JSON.stringify({ ...syncMessage, timestamp: Date.now() })
+    );
+
     refreshTable();
     showSuccess("ลบผู้โชคดีเรียบร้อยแล้ว", "สำเร็จ!");
   } catch (error) {
