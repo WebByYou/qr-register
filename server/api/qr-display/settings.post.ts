@@ -42,10 +42,23 @@ export default defineEventHandler(async (event) => {
           body.countStyle || { color: "#ffffff", size: 1.25 }
         ),
       },
+      {
+        key: "qrStyle",
+        value: JSON.stringify(
+          body.qrStyle || {
+            locked: false,
+            border: false,
+            borderColor: "#ffffff",
+            borderWidth: 10,
+          }
+        ),
+      },
       { key: "qrSize", value: String(body.qrSize || 300) },
       { key: "title", value: body.title || "Lucky Draw" },
       { key: "subtitle", value: body.subtitle || "ลุ้นรับรางวัลใหญ่" },
       { key: "showCount", value: String(body.showCount ?? false) },
+      { key: "showTitle", value: String(body.showTitle ?? true) },
+      { key: "showSubtitle", value: String(body.showSubtitle ?? true) },
     ];
 
     // Save each setting
@@ -68,19 +81,22 @@ export default defineEventHandler(async (event) => {
         "titleStyle",
         "subtitleStyle",
         "countStyle",
+        "qrStyle",
       ];
       acc[curr.key] = jsonFields.includes(curr.key)
         ? JSON.parse(curr.value)
         : curr.value;
       // Convert qrSize back to number for response
       if (curr.key === "qrSize") acc[curr.key] = Number(curr.value);
-      // Convert showCount back to boolean for response
-      if (curr.key === "showCount") acc[curr.key] = curr.value === "true";
+      // Convert booleans back for response
+      if (["showCount", "showTitle", "showSubtitle"].includes(curr.key)) {
+        acc[curr.key] = curr.value === "true";
+      }
       return acc;
     }, {} as any);
 
     // Emit update event
-    qrDisplayEmitter.emit("update", settings);
+    qrDisplayEmitter.emit("update", { type: "settings", data: settings });
 
     return {
       success: true,

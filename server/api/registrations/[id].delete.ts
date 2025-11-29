@@ -1,4 +1,5 @@
 import { prisma } from "../../utils/prisma";
+import { qrDisplayEmitter } from "../../utils/qr-display";
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, "id");
 
@@ -15,6 +16,11 @@ export default defineEventHandler(async (event) => {
         id: parseInt(id),
       },
     });
+
+    // Emit update event for count
+    const count = await prisma.registration.count();
+    qrDisplayEmitter.emit("update", { type: "count", data: count });
+
     return { success: true };
   } catch (error: any) {
     if (error.code === "P2025") {

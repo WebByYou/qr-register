@@ -27,10 +27,19 @@ const displaySettings = ref({
   titleStyle: { color: "#ffffff", size: 3.1, locked: false },
   subtitleStyle: { color: "#ffffff", size: 1.5, locked: false },
   countStyle: { color: "#ffffff", size: 1.25, locked: false },
+
+  qrStyle: {
+    locked: false,
+    border: false,
+    borderColor: "#ffffff",
+    borderWidth: 10,
+  },
   qrSize: 300,
   title: "",
   subtitle: "",
   showCount: false,
+  showTitle: true,
+  showSubtitle: true,
 });
 const isSavingDisplay = ref(false);
 
@@ -68,6 +77,14 @@ const loadSettings = async () => {
         data.subtitleStyle.locked = false;
       if (data.countStyle && typeof data.countStyle.locked === "undefined")
         data.countStyle.locked = false;
+      if (!data.qrStyle) {
+        data.qrStyle = {
+          locked: false,
+          border: false,
+          borderColor: "#ffffff",
+          borderWidth: 10,
+        };
+      }
 
       displaySettings.value = {
         ...displaySettings.value,
@@ -216,10 +233,14 @@ const saveDisplaySettings = async () => {
         titleStyle: displaySettings.value.titleStyle,
         subtitleStyle: displaySettings.value.subtitleStyle,
         countStyle: displaySettings.value.countStyle,
+
+        qrStyle: displaySettings.value.qrStyle,
         qrSize: displaySettings.value.qrSize,
         title: displaySettings.value.title,
         subtitle: displaySettings.value.subtitle,
         showCount: displaySettings.value.showCount,
+        showTitle: displaySettings.value.showTitle,
+        showSubtitle: displaySettings.value.showSubtitle,
       },
     });
     showSuccess("บันทึกการตั้งค่าหน้าจอสำเร็จ", "สำเร็จ!");
@@ -540,18 +561,69 @@ const copyUrl = async () => {
               </div>
             </div>
 
-            <div class="form-control mt-4 w-full">
-              <label class="label cursor-pointer pb-2">
-                <span class="label-text font-semibold">ขนาด QR Code</span>
-              </label>
-              <input
-                v-model.number="displaySettings.qrSize"
-                type="range"
-                min="100"
-                max="1000"
-                step="10"
-                class="range range-xs range-primary w-full"
-              />
+            <!-- QR Settings Group -->
+            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+              <div class="form-control">
+                <div class="label pt-0 pb-1 justify-between">
+                  <span class="label-text font-bold text-lg">QR Code</span>
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="btn btn-circle btn-ghost btn-xs"
+                      @click="
+                        displaySettings.qrStyle.locked =
+                          !displaySettings.qrStyle.locked
+                      "
+                    >
+                      <svg
+                        v-if="displaySettings.qrStyle.locked"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-error"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-success"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- QR Size -->
+                <div class="form-control mb-4">
+                  <label class="label pt-0 pb-2 justify-start">
+                    <span class="label-text text-sm font-medium">ขนาด</span>
+                  </label>
+                  <input
+                    v-model.number="displaySettings.qrSize"
+                    type="range"
+                    min="100"
+                    max="1000"
+                    step="10"
+                    class="range range-xs range-primary w-full"
+                    :disabled="displaySettings.qrStyle.locked"
+                  />
+                </div>
+              </div>
             </div>
 
             <!-- Title Group -->
@@ -561,78 +633,126 @@ const copyUrl = async () => {
                   <span class="label-text font-bold text-lg"
                     >หัวข้อ (Title)</span
                   >
-                  <button
-                    class="btn btn-ghost btn-xs"
-                    @click="
-                      displaySettings.titleStyle.locked =
-                        !displaySettings.titleStyle.locked
-                    "
-                  >
-                    <svg
-                      v-if="displaySettings.titleStyle.locked"
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5 text-error"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="btn btn-circle btn-ghost btn-xs"
+                      @click="
+                        displaySettings.titleStyle.locked =
+                          !displaySettings.titleStyle.locked
+                      "
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                    <svg
-                      v-else
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5 text-success"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <input
-                  v-model="displaySettings.title"
-                  type="text"
-                  class="input input-bordered w-full mb-3"
-                  placeholder="Lucky Draw"
-                  :disabled="displaySettings.titleStyle.locked"
-                />
-
-                <div class="flex gap-4 items-start">
-                  <div class="flex-1">
-                    <label class="label pt-0 pb-2 justify-start">
-                      <span class="label-text text-sm font-medium">ขนาด</span>
-                    </label>
-                    <input
-                      v-model.number="displaySettings.titleStyle.size"
-                      type="range"
-                      min="1"
-                      max="10"
-                      step="0.1"
-                      class="range range-xs range-primary w-full"
+                      <svg
+                        v-if="displaySettings.titleStyle.locked"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-error"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-success"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn btn-circle btn-ghost btn-xs"
+                      @click="
+                        displaySettings.showTitle = !displaySettings.showTitle
+                      "
                       :disabled="displaySettings.titleStyle.locked"
-                    />
+                    >
+                      <svg
+                        v-if="displaySettings.showTitle"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-primary"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    </button>
                   </div>
-                  <div class="flex-none flex flex-col items-center">
-                    <label class="label pt-0 pb-2">
-                      <span class="label-text text-sm font-medium">สี</span>
-                    </label>
-                    <input
-                      v-model="displaySettings.titleStyle.color"
-                      type="color"
-                      class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
-                      :disabled="displaySettings.titleStyle.locked"
-                    />
+                </div>
+                <div v-if="displaySettings.showTitle">
+                  <input
+                    v-model="displaySettings.title"
+                    type="text"
+                    class="input input-bordered w-full mb-3"
+                    placeholder="Lucky Draw"
+                    :disabled="displaySettings.titleStyle.locked"
+                  />
+
+                  <div class="flex gap-4 items-start">
+                    <div class="flex-1">
+                      <label class="label pt-0 pb-2 justify-start">
+                        <span class="label-text text-sm font-medium">ขนาด</span>
+                      </label>
+                      <input
+                        v-model.number="displaySettings.titleStyle.size"
+                        type="range"
+                        min="1"
+                        max="10"
+                        step="0.1"
+                        class="range range-xs range-primary w-full"
+                        :disabled="displaySettings.titleStyle.locked"
+                      />
+                    </div>
+                    <div class="flex-none flex flex-col items-center">
+                      <label class="label pt-0 pb-2">
+                        <span class="label-text text-sm font-medium">สี</span>
+                      </label>
+                      <input
+                        v-model="displaySettings.titleStyle.color"
+                        type="color"
+                        class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
+                        :disabled="displaySettings.titleStyle.locked"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -645,78 +765,127 @@ const copyUrl = async () => {
                   <span class="label-text font-bold text-lg"
                     >คำบรรยาย (Subtitle)</span
                   >
-                  <button
-                    class="btn btn-ghost btn-xs"
-                    @click="
-                      displaySettings.subtitleStyle.locked =
-                        !displaySettings.subtitleStyle.locked
-                    "
-                  >
-                    <svg
-                      v-if="displaySettings.subtitleStyle.locked"
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5 text-error"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  <div class="flex items-center gap-1">
+                    <button
+                      class="btn btn-circle btn-ghost btn-xs"
+                      @click="
+                        displaySettings.subtitleStyle.locked =
+                          !displaySettings.subtitleStyle.locked
+                      "
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                    <svg
-                      v-else
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5 text-success"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <input
-                  v-model="displaySettings.subtitle"
-                  type="text"
-                  class="input input-bordered w-full mb-3"
-                  placeholder="ลุ้นรับรางวัลใหญ่"
-                  :disabled="displaySettings.subtitleStyle.locked"
-                />
-
-                <div class="flex gap-4 items-start">
-                  <div class="flex-1">
-                    <label class="label pt-0 pb-2 justify-start">
-                      <span class="label-text text-sm font-medium">ขนาด</span>
-                    </label>
-                    <input
-                      v-model.number="displaySettings.subtitleStyle.size"
-                      type="range"
-                      min="0.5"
-                      max="5"
-                      step="0.1"
-                      class="range range-xs range-primary w-full"
+                      <svg
+                        v-if="displaySettings.subtitleStyle.locked"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-error"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-success"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn btn-circle btn-ghost btn-xs"
+                      @click="
+                        displaySettings.showSubtitle =
+                          !displaySettings.showSubtitle
+                      "
                       :disabled="displaySettings.subtitleStyle.locked"
-                    />
+                    >
+                      <svg
+                        v-if="displaySettings.showSubtitle"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-primary"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    </button>
                   </div>
-                  <div class="flex-none flex flex-col items-center">
-                    <label class="label pt-0 pb-2">
-                      <span class="label-text text-sm font-medium">สี</span>
-                    </label>
-                    <input
-                      v-model="displaySettings.subtitleStyle.color"
-                      type="color"
-                      class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
-                      :disabled="displaySettings.subtitleStyle.locked"
-                    />
+                </div>
+                <div v-if="displaySettings.showSubtitle">
+                  <input
+                    v-model="displaySettings.subtitle"
+                    type="text"
+                    class="input input-bordered w-full mb-3"
+                    placeholder="ลุ้นรับรางวัลใหญ่"
+                    :disabled="displaySettings.subtitleStyle.locked"
+                  />
+
+                  <div class="flex gap-4 items-start">
+                    <div class="flex-1">
+                      <label class="label pt-0 pb-2 justify-start">
+                        <span class="label-text text-sm font-medium">ขนาด</span>
+                      </label>
+                      <input
+                        v-model.number="displaySettings.subtitleStyle.size"
+                        type="range"
+                        min="0.5"
+                        max="5"
+                        step="0.1"
+                        class="range range-xs range-primary w-full"
+                        :disabled="displaySettings.subtitleStyle.locked"
+                      />
+                    </div>
+                    <div class="flex-none flex flex-col items-center">
+                      <label class="label pt-0 pb-2">
+                        <span class="label-text text-sm font-medium">สี</span>
+                      </label>
+                      <input
+                        v-model="displaySettings.subtitleStyle.color"
+                        type="color"
+                        class="h-8 w-14 p-0 border-0 rounded overflow-hidden cursor-pointer shadow-sm"
+                        :disabled="displaySettings.subtitleStyle.locked"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -729,9 +898,9 @@ const copyUrl = async () => {
                   <span class="label-text font-bold text-lg"
                     >ตัวนับ (Count)</span
                   >
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-1">
                     <button
-                      class="btn btn-ghost btn-xs"
+                      class="btn btn-circle btn-ghost btn-xs"
                       @click="
                         displaySettings.countStyle.locked =
                           !displaySettings.countStyle.locked
@@ -768,12 +937,50 @@ const copyUrl = async () => {
                         />
                       </svg>
                     </button>
-                    <input
-                      v-model="displaySettings.showCount"
-                      type="checkbox"
-                      class="toggle toggle-primary"
+                    <button
+                      class="btn btn-circle btn-ghost btn-xs"
+                      @click="
+                        displaySettings.showCount = !displaySettings.showCount
+                      "
                       :disabled="displaySettings.countStyle.locked"
-                    />
+                    >
+                      <svg
+                        v-if="displaySettings.showCount"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-primary"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 <div class="text-xs text-base-content/60 mb-3">

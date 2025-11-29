@@ -48,13 +48,16 @@ onMounted(() => {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        // Update settings if changed
-        if (data.title || data.subtitle || data.waitText) {
-          settings.value = {
-            ...settings.value,
-            ...data,
-          };
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === "settings") {
+          const data = parsed.data;
+          // Update settings if changed
+          if (data.title || data.subtitle || data.waitText) {
+            settings.value = {
+              ...settings.value,
+              ...data,
+            };
+          }
         }
       } catch (e) {
         console.error("Error parsing SSE data:", e);

@@ -10,17 +10,25 @@ const settings = ref({
   titleStyle: { color: "#ffffff", size: 3.1, locked: false },
   subtitleStyle: { color: "#ffffff", size: 1.5, locked: false },
   countStyle: { color: "#ffffff", size: 1.25, locked: false },
+
+  qrStyle: {
+    locked: false,
+    border: false,
+    borderColor: "#ffffff",
+    borderWidth: 10,
+  },
   qrSize: 300,
   title: "Lucky Draw",
   subtitle: "ลุ้นรับรางวัลใหญ่",
   showCount: false,
+  showTitle: true,
+  showSubtitle: true,
 });
 
 const registrationUrl = ref("");
 const qrCodeDataUrl = ref("");
 const isLoading = ref(true);
 const registrationCount = ref(0);
-let countInterval: NodeJS.Timeout | null = null;
 
 // Subscribe to SSE stream
 let eventSource: EventSource | null = null;
@@ -37,20 +45,34 @@ onMounted(async () => {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        // Ensure locked property exists
-        if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
-          data.titleStyle.locked = false;
-        if (
-          data.subtitleStyle &&
-          typeof data.subtitleStyle.locked === "undefined"
-        )
-          data.subtitleStyle.locked = false;
-        if (data.countStyle && typeof data.countStyle.locked === "undefined")
-          data.countStyle.locked = false;
+        const parsed = JSON.parse(event.data);
 
-        if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
-          settings.value = data;
+        if (parsed.type === "settings") {
+          const data = parsed.data;
+          // Ensure locked property exists
+          if (data.titleStyle && typeof data.titleStyle.locked === "undefined")
+            data.titleStyle.locked = false;
+          if (
+            data.subtitleStyle &&
+            typeof data.subtitleStyle.locked === "undefined"
+          )
+            data.subtitleStyle.locked = false;
+          if (data.countStyle && typeof data.countStyle.locked === "undefined")
+            data.countStyle.locked = false;
+          if (!data.qrStyle) {
+            data.qrStyle = {
+              locked: false,
+              border: false,
+              borderColor: "#ffffff",
+              borderWidth: 10,
+            };
+          }
+
+          if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
+            settings.value = data;
+          }
+        } else if (parsed.type === "count") {
+          registrationCount.value = parsed.data;
         }
       } catch (e) {
         console.error("Error parsing SSE data:", e);
@@ -58,10 +80,9 @@ onMounted(async () => {
     };
   }
 
-  // Start polling if showCount is enabled
+  // Initial fetch for count
   if (settings.value.showCount) {
     fetchCount();
-    countInterval = setInterval(fetchCount, 5000);
   }
 
   // Preview Mode Logic
@@ -73,9 +94,6 @@ onMounted(async () => {
 onUnmounted(() => {
   if (eventSource) {
     eventSource.close();
-  }
-  if (countInterval) {
-    clearInterval(countInterval);
   }
   if (isPreview.value) {
     window.removeEventListener("message", handleMessage);
@@ -108,6 +126,7 @@ const startDrag = (e: MouseEvent, type: string) => {
   let startTop = 0;
 
   if (type === "qr") {
+    if (settings.value.qrStyle.locked) return;
     startLeft = settings.value.qrPosition.x;
     startTop = settings.value.qrPosition.y;
   } else if (type === "title") {
@@ -207,19 +226,12 @@ const fetchCount = async () => {
 };
 
 // Watch for showCount changes to start/stop polling
+// Watch for showCount changes to fetch initial count
 watch(
   () => settings.value.showCount,
   (newVal) => {
     if (newVal) {
       fetchCount();
-      if (!countInterval) {
-        countInterval = setInterval(fetchCount, 5000);
-      }
-    } else {
-      if (countInterval) {
-        clearInterval(countInterval);
-        countInterval = null;
-      }
     }
   }
 );
@@ -253,6 +265,14 @@ const loadSettings = async () => {
         data.subtitleStyle.locked = false;
       if (data.countStyle && typeof data.countStyle.locked === "undefined")
         data.countStyle.locked = false;
+      if (!data.qrStyle) {
+        data.qrStyle = {
+          locked: false,
+          border: false,
+          borderColor: "#ffffff",
+          borderWidth: 10,
+        };
+      }
 
       if (JSON.stringify(settings.value) !== JSON.stringify(data)) {
         settings.value = data;
@@ -355,6 +375,7 @@ onMounted(() => {
         <!-- Content Container (Title/Subtitle/WaitText) -->
         <!-- Title -->
         <div
+          v-if="settings.showTitle"
           class="absolute transition-all duration-75 ease-out font-bold drop-shadow-lg whitespace-nowrap select-none"
           :class="{
             'cursor-move hover:ring-2 ring-blue-500 rounded':
@@ -375,6 +396,7 @@ onMounted(() => {
 
         <!-- Subtitle -->
         <div
+          v-if="settings.showSubtitle"
           class="absolute transition-all duration-75 ease-out opacity-90 drop-shadow-md whitespace-nowrap select-none"
           :class="{
             'cursor-move hover:ring-2 ring-blue-500 rounded':
@@ -429,8 +451,11 @@ onMounted(() => {
         <div
           v-if="qrCodeDataUrl"
           ref="qrElement"
-          class="absolute transition-all duration-75 ease-out"
-          :class="{ 'cursor-move hover:ring-2 ring-blue-500': isPreview }"
+          class="absolute transition-all duration-75 ease-out box-content"
+          :class="{
+            'cursor-move hover:ring-2 ring-blue-500':
+              isPreview && !settings.qrStyle.locked,
+          }"
           :style="{
             left: `${(settings.qrPosition.x / 1920) * 100}%`,
             top: `${(settings.qrPosition.y / 1080) * 100}%`,

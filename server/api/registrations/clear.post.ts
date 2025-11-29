@@ -1,4 +1,5 @@
 import { prisma } from "../../utils/prisma";
+import { qrDisplayEmitter } from "../../utils/qr-display";
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const { password } = body;
@@ -17,6 +18,9 @@ export default defineEventHandler(async (event) => {
 
     // Truncate table (delete all and reset auto-increment)
     await prisma.$executeRaw`TRUNCATE TABLE "Registration" RESTART IDENTITY CASCADE`;
+
+    // Emit update event for count
+    qrDisplayEmitter.emit("update", { type: "count", data: 0 });
 
     return {
       success: true,

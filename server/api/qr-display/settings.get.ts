@@ -22,6 +22,8 @@ export default defineEventHandler(async (event) => {
       title: "Lucky Draw",
       subtitle: "ลุ้นรับรางวัลใหญ่",
       showCount: "false",
+      showTitle: "true",
+      showSubtitle: "true",
     };
 
     // Merge defaults with stored settings
@@ -67,6 +69,8 @@ export default defineEventHandler(async (event) => {
 
     // Ensure showCount is boolean
     finalSettings.showCount = finalSettings.showCount === "true";
+    finalSettings.showTitle = finalSettings.showTitle !== "false"; // Default true
+    finalSettings.showSubtitle = finalSettings.showSubtitle !== "false"; // Default true
 
     return {
       success: true,

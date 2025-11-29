@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "../../utils/prisma";
+import { qrDisplayEmitter } from "../../utils/qr-display";
 
 const registrationSchema = z.object({
   firstName: z.string().min(1, "กรุณากรอกชื่อ"),
@@ -31,6 +32,11 @@ export default defineEventHandler(async (event) => {
         employeeId,
       },
     });
+
+    // Emit update event for count
+    const count = await prisma.registration.count();
+    qrDisplayEmitter.emit("update", { type: "count", data: count });
+
     return registration;
   } catch (error: any) {
     if (error.code === "P2002") {
