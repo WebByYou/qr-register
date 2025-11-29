@@ -66,7 +66,11 @@ export const useRegistration = () => {
     };
 
     globalEventSource.onerror = (err) => {
-      console.error("SSE Error (Store):", err);
+      if (globalEventSource?.readyState === EventSource.CLOSED) {
+        console.log("SSE Connection closed (Store)");
+      } else {
+        console.error("SSE Error (Store):", err);
+      }
       isConnected.value = false;
       globalEventSource?.close();
       globalEventSource = null;

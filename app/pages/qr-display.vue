@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import QRCode from "qrcode";
-import { useRegistration } from "../../composables/useRegistration";
 
 const {
   count: registrationCount,

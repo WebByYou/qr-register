@@ -3,19 +3,15 @@ definePageMeta({
   layout: "admin",
 });
 
-const { data: registrations } = await useFetch("/api/registrations", {
-  query: {
-    limit: 1000,
-  },
-});
+const { count: totalRegistrations, init: initRegistration } = useRegistration();
 
-const allRegistrations = computed(() => registrations.value?.data || []);
 const isSpinning = ref(false);
 const winners = ref<any[]>([]);
 const spinDuration = 5000;
 const totalPrizes = ref(10);
 const isPrizeLimited = ref(false);
 const allowRepeatWinners = ref(false);
+const allRegistrations = ref<any[]>([]);
 
 const { showError, showConfirm, showSuccess } = useSwal();
 const { exportToExcel } = useExcel();
@@ -283,6 +279,7 @@ const clearHistory = async () => {
       method: "DELETE",
     });
     winners.value = [];
+    clearDisplayHistory(); // Reset the display and clear history
     showSuccess("ล้างประวัติเรียบร้อยแล้ว", "สำเร็จ!");
   } catch (error) {
     console.error("Error clearing history:", error);
@@ -307,7 +304,9 @@ const loadSettings = async () => {
 const isLoading = ref(true);
 
 onMounted(async () => {
-  await Promise.all([loadSettings(), loadHistory()]);
+  await Promise.all([loadSettings(), loadHistory(), loadRegistrations()]);
+  initRegistration();
+
   isLoading.value = false;
   if (typeof window !== "undefined" && "BroadcastChannel" in window) {
     broadcastChannel = new BroadcastChannel("lucky-draw-channel");
@@ -468,7 +467,35 @@ const loadHistory = async () => {
   }
 };
 
-const reset = () => {
+const loadRegistrations = async () => {
+  try {
+    const response: any = await $fetch("/api/registrations", {
+      query: { limit: 10000 },
+    });
+    if (response?.data) {
+      allRegistrations.value = response.data;
+    }
+  } catch (error) {
+    console.error("Error loading registrations:", error);
+  }
+};
+
+const clearDisplayHistory = () => {
+  isSpinning.value = false;
+
+  const resetMessage = {
+    type: "clear-history",
+  };
+
+  broadcastChannel?.postMessage(resetMessage);
+  displayWindow?.postMessage(resetMessage, "*");
+  localStorage.setItem(
+    "lucky-draw-event",
+    JSON.stringify({ ...resetMessage, timestamp: Date.now() })
+  );
+};
+
+const resetDisplay = () => {
   isSpinning.value = false;
 
   const resetMessage = {
@@ -525,7 +552,7 @@ const reset = () => {
               class="h-8 w-16 bg-gray-200 rounded animate-pulse mt-1"
             ></div>
             <h3 v-else class="text-2xl font-bold text-gray-800">
-              {{ allRegistrations.length }}
+              {{ totalRegistrations }}
             </h3>
           </div>
         </div>
@@ -629,6 +656,26 @@ const reset = () => {
                   />
                 </svg>
                 Export Excel
+              </button>
+              <button
+                @click="resetDisplay"
+                class="btn btn-sm btn-outline gap-2 font-normal"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                รีเซ็ตหน้าจอแสดงผล
               </button>
               <button
                 v-if="winners.length > 0"
@@ -755,7 +802,7 @@ const reset = () => {
                       {{ winner.winningRank }}
                     </td>
                     <td class="py-4">
-                      <div class="font-bold text-gray-800 text-base">
+                      <div class="font-medium text-gray-800 text-sm">
                         {{ winner.firstName }} {{ winner.lastName }}
                       </div>
                     </td>
@@ -1039,7 +1086,7 @@ const reset = () => {
             </button>
 
             <button
-              @click="reset"
+              @click="resetDisplay"
               :disabled="isSpinning"
               class="btn btn-outline w-full hover:bg-gray-50"
             >

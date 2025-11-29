@@ -38,8 +38,25 @@ const loadSettings = async () => {
   }
 };
 
+const loadHistory = async () => {
+  try {
+    const response: any = await $fetch("/api/lucky-draw/history", {
+      query: { limit: 10000 },
+    });
+    if (response?.success && response?.data) {
+      winnersList.value = response.data.map((w: any) => ({
+        ...w,
+        wonAt: new Date(w.wonAt),
+      }));
+    }
+  } catch (error) {
+    console.error("Error loading history:", error);
+  }
+};
+
 onMounted(() => {
   loadSettings();
+  loadHistory();
 
   // Subscribe to SSE stream
   let eventSource: EventSource | null = null;
@@ -180,6 +197,12 @@ const handleMessage = (data: any) => {
   } else if (type === "show-winner") {
     showWinner(winnerData);
   } else if (type === "reset") {
+    resetDisplay();
+  } else if (type === "clear-history") {
+    winnersList.value = [];
+    resetDisplay();
+  } else if (type === "sync-state") {
+    winnersList.value = [];
     resetDisplay();
   } else if (type === "sync-state") {
     addLog("State synced");

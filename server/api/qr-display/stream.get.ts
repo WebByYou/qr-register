@@ -14,11 +14,17 @@ export default defineEventHandler((event) => {
     stream.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
+  // Heartbeat to keep connection alive
+  const interval = setInterval(() => {
+    stream.write(": keep-alive\n\n");
+  }, 30000);
+
   // Subscribe to events
   qrDisplayEmitter.on("update", listener);
 
   // Cleanup on connection close
   event.node.req.on("close", () => {
+    clearInterval(interval);
     qrDisplayEmitter.off("update", listener);
     stream.end();
   });

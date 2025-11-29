@@ -1,6 +1,14 @@
 <script setup lang="ts">
+import { useRegistration } from "~/composables/useRegistration";
+
 definePageMeta({
   layout: "admin",
+});
+
+const { count: registrationCount, init: initRegistration } = useRegistration();
+
+onMounted(() => {
+  initRegistration();
 });
 
 const page = ref(1);
@@ -30,6 +38,11 @@ const { data: response, refresh } = await useFetch("/api/registrations", {
     sortOrder,
   },
   watch: [page, limit, debouncedSearch, sortBy, sortOrder],
+});
+
+// Watch for real-time updates
+watch(registrationCount, () => {
+  refresh();
 });
 
 const registrations = computed(() => response.value?.data || []);
@@ -179,7 +192,7 @@ const handleExport = async () => {
       <div class="flex items-center gap-3">
         <h2 class="text-2xl font-bold">รายชื่อผู้ลงทะเบียน</h2>
         <div class="badge badge-primary badge-lg font-mono">
-          {{ pagination.total }}
+          {{ registrationCount }}
         </div>
       </div>
       <div class="flex gap-2 w-full sm:w-auto">
