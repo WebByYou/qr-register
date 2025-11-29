@@ -683,7 +683,9 @@ const copyDisplayUrl = async () => {
             </div>
 
             <!-- QR Settings Group -->
-            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+            <div
+              class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
+            >
               <div class="form-control">
                 <div class="label pt-0 pb-1 justify-between">
                   <span class="label-text font-bold text-base">QR Code</span>
@@ -748,7 +750,9 @@ const copyDisplayUrl = async () => {
             </div>
 
             <!-- Title Group -->
-            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+            <div
+              class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
+            >
               <div class="form-control">
                 <div class="label pt-0 pb-1 justify-between">
                   <span class="label-text font-bold text-base"
@@ -880,7 +884,9 @@ const copyDisplayUrl = async () => {
             </div>
 
             <!-- Subtitle Group -->
-            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+            <div
+              class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
+            >
               <div class="form-control">
                 <div class="label pt-0 pb-1 justify-between">
                   <span class="label-text font-bold text-base"
@@ -1013,7 +1019,9 @@ const copyDisplayUrl = async () => {
             </div>
 
             <!-- Count Group -->
-            <div class="border rounded-lg p-4 mt-4 bg-base-100 shadow-sm">
+            <div
+              class="border border-base-300 rounded-lg p-4 mt-4 bg-base-100 shadow-sm"
+            >
               <div class="form-control">
                 <div class="label cursor-pointer justify-between pt-0 pb-2">
                   <span class="label-text font-bold text-base"
